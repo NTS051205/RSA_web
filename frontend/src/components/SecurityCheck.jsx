@@ -1,3 +1,4 @@
+/* eslint-env es2015 */
 import React, { useState, useEffect } from 'react';
 
 function SecurityCheck({ currentKey }) {
@@ -75,6 +76,7 @@ function SecurityCheck({ currentKey }) {
     const diff = p > q ? p - q : q - p;
     // eslint-disable-next-line no-undef
     const avg = (p + q) / BigInt(2);
+    // eslint-disable-next-line no-undef
     const percentDiff = Number(diff * BigInt(100) / avg);
 
     if (percentDiff < 5 && bitLength < 1024) {
@@ -86,6 +88,7 @@ function SecurityCheck({ currentKey }) {
     const e = BigInt(currentKey.public_key.e);
     // eslint-disable-next-line no-undef
     if (e !== BigInt(65537) && e !== BigInt(3)) {
+      // eslint-disable-next-line no-undef
       analysis.warnings.push('Public exponent e không phải giá trị chuẩn (65537 hoặc 3)');
     }
 
