@@ -57,8 +57,23 @@ function App() {
       timestamp: new Date().toLocaleTimeString('vi-VN'),
       ...entry
     };
-    setHistory(prev => [historyEntry, ...prev]);
+    const newHistory = [historyEntry, ...history];
+    setHistory(newHistory);
+    // Save to localStorage
+    localStorage.setItem('rsa_history', JSON.stringify(newHistory));
   };
+
+  // Load history from localStorage on mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('rsa_history');
+    if (savedHistory) {
+      try {
+        setHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error('Failed to load history:', e);
+      }
+    }
+  }, []);
 
   // Check API health
   useEffect(() => {
