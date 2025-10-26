@@ -7,6 +7,16 @@
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![React](https://img.shields.io/badge/React-18.2-61dafb.svg)](https://reactjs.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0-green.svg)](https://flask.palletsprojects.com/)
+[![Vercel](https://img.shields.io/badge/Vercel-Deployed-black.svg)](https://vercel.com)
+[![Render](https://img.shields.io/badge/Render-Deployed-blue.svg)](https://render.com)
+
+## 🌐 Live Demo
+
+**🔗 Trải nghiệm ngay:** [https://rsa-web-omega.vercel.app](https://rsa-web-omega.vercel.app)
+
+**📦 GitHub Repository:** [https://github.com/NTS051205/RSA_web](https://github.com/NTS051205/RSA_web)
+
+---
 
 ## ✨ Tính năng
 
@@ -56,7 +66,15 @@ rsa-demo/
 └── README.md                  # This file
 ```
 
-## 🚀 Cách chạy
+## 🌐 Deployment
+
+- **Frontend**: Deployed trên [Vercel](https://vercel.com) - https://rsa-web-omega.vercel.app
+- **Backend**: Deployed trên [Render](https://render.com) - https://rsa-backend-2ew3.onrender.com
+- **Repository**: [GitHub](https://github.com/NTS051205/RSA_web)
+
+---
+
+## 🚀 Cách chạy Local
 
 ### Bước 1: Cài đặt Backend
 
@@ -133,8 +151,10 @@ Frontend sẽ mở tại `http://localhost:3000`
 
 ### Frontend
 - React 18
+- Recharts (Data visualization)
 - Axios (HTTP client)
 - Modern responsive UI
+- Toast notifications
 
 ## 📚 Tài liệu tham khảo
 
@@ -154,7 +174,10 @@ Thêm screenshots vào để dự án trở nên chuyên nghiệp hơn:
 
 ## 🎓 Tác giả
 
-Demo cho môn **An toàn và Bảo mật Thông tin** - Đại học Kinh tế Quốc dân (NEU)
+**Developer**: NTS  
+**Project**: Demo cho môn **An toàn và Bảo mật Thông tin**  
+**Trường**: Đại học Kinh tế Quốc dân (NEU)  
+**Year**: 2025
 
 ---
 
