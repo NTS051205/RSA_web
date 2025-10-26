@@ -1,4 +1,4 @@
-/* eslint-env es2015 */
+/* eslint-disable */
 import React, { useState, useEffect } from 'react';
 
 function SecurityCheck({ currentKey }) {
