@@ -1,0 +1,321 @@
+# Flask backend for RSA Demo with logging
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from datetime import datetime
+import logging
+import os
+import sys
+
+# Import RSA core from demo folder
+# Get the project root directory (parent of backend)
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+demo_dir = os.path.join(project_root, 'demo')
+sys.path.insert(0, demo_dir)
+
+# Try importing with error handling
+try:
+    from rsa_core import generate_rsa, RSAKey, rsa_encrypt_bytes, rsa_decrypt_bytes, pss_sign, pss_verify, factor_demo
+except ImportError as e:
+    print(f"ERROR: Cannot import rsa_core from {demo_dir}")
+    print(f"Error: {e}")
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Python path: {sys.path}")
+    raise
+
+# Setup logging
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/rsa_api.log', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+CORS(app)
+
+# Store keys (in production, use proper storage)
+keys_storage = {}
+
+@app.route('/', methods=['GET'])
+def index():
+    """Landing page"""
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>RSA Demo - Backend API</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                text-align: center;
+                padding: 50px;
+            }
+            .container {
+                background: rgba(255,255,255,0.1);
+                backdrop-filter: blur(10px);
+                padding: 40px;
+                border-radius: 20px;
+                max-width: 600px;
+                margin: 0 auto;
+            }
+            h1 { font-size: 2.5rem; margin-bottom: 20px; }
+            p { font-size: 1.2rem; line-height: 1.6; }
+            .endpoint {
+                background: rgba(255,255,255,0.2);
+                padding: 10px;
+                border-radius: 8px;
+                margin: 10px 0;
+                font-family: monospace;
+            }
+            .warning {
+                background: rgba(255,255,0,0.2);
+                padding: 15px;
+                border-radius: 10px;
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🔐 RSA Demo Backend API</h1>
+            <p>Đây là backend API server. Để sử dụng giao diện, vui lòng truy cập:</p>
+            <div class="warning">
+                <strong>🌐 Frontend:</strong>
+                <div style="font-size: 1.5rem; margin-top: 10px;">
+                    <a href="http://localhost:3000" style="color: #fff; text-decoration: underline;">
+                        http://localhost:3000
+                    </a>
+                </div>
+            </div>
+            <h2 style="margin-top: 40px;">API Endpoints:</h2>
+            <div class="endpoint">GET /api/health</div>
+            <div class="endpoint">POST /api/generate-key</div>
+            <div class="endpoint">POST /api/encrypt</div>
+            <div class="endpoint">POST /api/decrypt</div>
+            <div class="endpoint">POST /api/sign</div>
+            <div class="endpoint">POST /api/verify</div>
+            <div class="endpoint">POST /api/factor</div>
+        </div>
+    </body>
+    </html>
+    '''
+
+@app.route('/api/health', methods=['GET'])
+def health():
+    """Health check endpoint"""
+    logger.info("Health check request")
+    return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
+
+@app.route('/api/generate-key', methods=['POST'])
+def generate_key():
+    """Generate new RSA key pair"""
+    try:
+        data = request.get_json() or {}
+        p_low = data.get('p_low', 10**9)
+        p_high = data.get('p_high', 2*10**9)
+        
+        # Convert to int to avoid float issues
+        p_low = int(float(p_low)) if isinstance(p_low, (str, float)) else int(p_low)
+        p_high = int(float(p_high)) if isinstance(p_high, (str, float)) else int(p_high)
+        
+        logger.info(f"Generating RSA key with p_range: [{p_low}, {p_high}]")
+        
+        key = generate_rsa(p_low, p_high)
+        
+        # Store key (in production, use secure storage)
+        key_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        keys_storage[key_id] = key
+        
+        logger.info(f"Key generated successfully. Key ID: {key_id}, n bits: {key.n.bit_length()}")
+        
+        return jsonify({
+            'success': True,
+            'key_id': key_id,
+            'public_key': {
+                'n': str(key.n),
+                'e': str(key.e),
+                'bit_length': key.n.bit_length()
+            },
+            'private_key': {
+                'n': str(key.n),
+                'd': str(key.d),
+                'p': str(key.p),
+                'q': str(key.q)
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error generating key: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/encrypt', methods=['POST'])
+def encrypt():
+    """Encrypt message using RSA"""
+    try:
+        data = request.get_json()
+        key_id = data.get('key_id')
+        message = data.get('message', '')
+        
+        logger.info(f"Encryption request. Key ID: {key_id}, Message length: {len(message)}")
+        
+        if key_id not in keys_storage:
+            logger.error(f"Key not found: {key_id}")
+            return jsonify({'success': False, 'error': 'Key not found'}), 404
+        
+        key = keys_storage[key_id]
+        
+        # Encrypt
+        plaintext_bytes = message.encode('utf-8')
+        ciphertext_blocks = rsa_encrypt_bytes(plaintext_bytes, key)
+        
+        logger.info(f"Encryption successful. Blocks count: {len(ciphertext_blocks)}")
+        
+        return jsonify({
+            'success': True,
+            'ciphertext_blocks': [str(c) for c in ciphertext_blocks],
+            'block_count': len(ciphertext_blocks)
+        })
+    except Exception as e:
+        logger.error(f"Error encrypting: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/decrypt', methods=['POST'])
+def decrypt():
+    """Decrypt message using RSA"""
+    try:
+        data = request.get_json()
+        key_id = data.get('key_id')
+        ciphertext_blocks = data.get('ciphertext_blocks', [])
+        
+        logger.info(f"Decryption request. Key ID: {key_id}, Blocks count: {len(ciphertext_blocks)}")
+        
+        if key_id not in keys_storage:
+            logger.error(f"Key not found: {key_id}")
+            return jsonify({'success': False, 'error': 'Key not found'}), 404
+        
+        key = keys_storage[key_id]
+        
+        # Convert string blocks to integers
+        ct_blocks_int = [int(c) for c in ciphertext_blocks]
+        
+        # Decrypt
+        plaintext_bytes = rsa_decrypt_bytes(ct_blocks_int, key)
+        plaintext = plaintext_bytes.decode('utf-8')
+        
+        logger.info(f"Decryption successful. Plaintext length: {len(plaintext)}")
+        
+        return jsonify({
+            'success': True,
+            'plaintext': plaintext
+        })
+    except Exception as e:
+        logger.error(f"Error decrypting: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/sign', methods=['POST'])
+def sign():
+    """Sign message using RSA"""
+    try:
+        data = request.get_json()
+        key_id = data.get('key_id')
+        message = data.get('message', '')
+        
+        logger.info(f"Signing request. Key ID: {key_id}, Message length: {len(message)}")
+        
+        if key_id not in keys_storage:
+            logger.error(f"Key not found: {key_id}")
+            return jsonify({'success': False, 'error': 'Key not found'}), 404
+        
+        key = keys_storage[key_id]
+        
+        # Sign
+        signature, salt = pss_sign(message.encode('utf-8'), key)
+        
+        logger.info(f"Signing successful")
+        
+        return jsonify({
+            'success': True,
+            'signature': str(signature),
+            'salt': salt.hex()
+        })
+    except Exception as e:
+        logger.error(f"Error signing: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/verify', methods=['POST'])
+def verify():
+    """Verify signature using RSA"""
+    try:
+        data = request.get_json()
+        key_id = data.get('key_id')
+        message = data.get('message', '')
+        signature = data.get('signature', '')
+        salt_hex = data.get('salt', '')
+        
+        logger.info(f"Verification request. Key ID: {key_id}, Message length: {len(message)}")
+        
+        if key_id not in keys_storage:
+            logger.error(f"Key not found: {key_id}")
+            return jsonify({'success': False, 'error': 'Key not found'}), 404
+        
+        key = keys_storage[key_id]
+        
+        # Convert hex string back to bytes
+        salt = bytes.fromhex(salt_hex)
+        sig_int = int(signature)
+        
+        # Verify
+        is_valid = pss_verify(message.encode('utf-8'), sig_int, salt, key)
+        
+        logger.info(f"Verification result: {is_valid}")
+        
+        return jsonify({
+            'success': True,
+            'is_valid': is_valid
+        })
+    except Exception as e:
+        logger.error(f"Error verifying: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/factor', methods=['POST'])
+def factor():
+    """Factor n to demonstrate attack"""
+    try:
+        data = request.get_json()
+        key_id = data.get('key_id')
+        
+        logger.info(f"Factor attack request. Key ID: {key_id}")
+        
+        if key_id not in keys_storage:
+            logger.error(f"Key not found: {key_id}")
+            return jsonify({'success': False, 'error': 'Key not found'}), 404
+        
+        key = keys_storage[key_id]
+        
+        # Factor
+        method, factor, time_taken = factor_demo(key.n)
+        
+        logger.info(f"Factor attack completed. Method: {method}, Factor: {factor}, Time: {time_taken:.3f}s")
+        
+        return jsonify({
+            'success': True,
+            'method': method,
+            'factor': str(factor) if factor else None,
+            'time_seconds': time_taken,
+            'found': factor is not None
+        })
+    except Exception as e:
+        logger.error(f"Error in factor attack: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+if __name__ == '__main__':
+    logger.info("Starting RSA Demo API Server")
+    app.run(debug=True, port=5000)
