@@ -68,9 +68,12 @@ function SecurityCheck({ currentKey }) {
     }
 
     // Check if p and q are close (security concern)
+    // eslint-disable-next-line no-undef
     const p = BigInt(currentKey.private_key.p);
+    // eslint-disable-next-line no-undef
     const q = BigInt(currentKey.private_key.q);
     const diff = p > q ? p - q : q - p;
+    // eslint-disable-next-line no-undef
     const avg = (p + q) / BigInt(2);
     const percentDiff = Number(diff * BigInt(100) / avg);
 
@@ -79,7 +82,9 @@ function SecurityCheck({ currentKey }) {
     }
 
     // Check if e is standard
+    // eslint-disable-next-line no-undef
     const e = BigInt(currentKey.public_key.e);
+    // eslint-disable-next-line no-undef
     if (e !== BigInt(65537) && e !== BigInt(3)) {
       analysis.warnings.push('Public exponent e không phải giá trị chuẩn (65537 hoặc 3)');
     }
