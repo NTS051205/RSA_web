@@ -103,8 +103,9 @@ code {
 }
 
 .status-indicator.online {
-  background: rgba(76, 175, 80, 0.35);
+  background: rgba(76, 175, 80, 0.6);
   color: #ffffff;
+  box-shadow: 0 0 20px rgba(76, 175, 80, 0.4);
 }
 
 .status-indicator.offline {

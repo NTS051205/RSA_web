@@ -29,6 +29,7 @@ function ToastNotification({ message, type = 'info', onClose }) {
 
   return (
     <div 
+      onClick={onClose}
       style={{
         background: getColor(),
         color: 'white',
@@ -44,6 +45,7 @@ function ToastNotification({ message, type = 'info', onClose }) {
         zIndex: 10000,
         backdropFilter: 'blur(20px)',
         border: '1px solid rgba(255, 255, 255, 0.1)',
+        cursor: 'pointer',
       }}
     >
       <div style={{ 
@@ -73,7 +75,10 @@ function ToastNotification({ message, type = 'info', onClose }) {
         </div>
       </div>
       <button
-        onClick={onClose}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
         style={{
           background: 'rgba(255, 255, 255, 0.25)',
           border: 'none',

@@ -5,6 +5,8 @@ from datetime import datetime
 import logging
 import os
 import sys
+import re
+from functools import wraps
 
 # Import RSA core from demo folder
 # Get the project root directory (parent of backend)
@@ -42,6 +44,45 @@ CORS(app)
 
 # Store keys (in production, use proper storage)
 keys_storage = {}
+
+# Security: Rate limiting (simple counter)
+request_counts = {}
+
+# Security: Input validation helpers
+def validate_key_id_format(key_id):
+    """Validate key_id follows expected format"""
+    if not key_id or not isinstance(key_id, str):
+        return False
+    # Expected format: YYYYMMDD_HHMMSS
+    pattern = r'^\d{8}_\d{6}$'
+    return bool(re.match(pattern, key_id))
+
+def validate_message_length(message, max_length=10000):
+    """Validate message length"""
+    if not isinstance(message, str):
+        return False
+    return len(message) <= max_length and len(message) > 0
+
+def validate_number_range(value, min_val=None, max_val=None):
+    """Validate numeric range"""
+    try:
+        num = int(value)
+        if min_val is not None and num < min_val:
+            return False
+        if max_val is not None and num > max_val:
+            return False
+        return True
+    except (ValueError, TypeError):
+        return False
+
+def validate_json_required(f):
+    """Decorator to check JSON is provided"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not request.is_json:
+            return jsonify({'success': False, 'error': 'JSON required'}), 400
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/', methods=['GET'])
 def index():
@@ -116,6 +157,7 @@ def health():
     return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
 @app.route('/api/generate-key', methods=['POST'])
+@validate_json_required
 def generate_key():
     """Generate new RSA key pair"""
     try:
@@ -126,6 +168,20 @@ def generate_key():
         # Convert to int to avoid float issues
         p_low = int(float(p_low)) if isinstance(p_low, (str, float)) else int(p_low)
         p_high = int(float(p_high)) if isinstance(p_high, (str, float)) else int(p_high)
+        
+        # Security: Validate range
+        if p_low < 1000 or p_high < 1000:
+            logger.warning(f"Invalid p_low/p_high values: p_low={p_low}, p_high={p_high}")
+            return jsonify({'success': False, 'error': 'p_low and p_high must be at least 1000'}), 400
+        
+        if p_low >= p_high:
+            logger.warning(f"Invalid range: p_low >= p_high")
+            return jsonify({'success': False, 'error': 'p_low must be less than p_high'}), 400
+        
+        # Security: Limit key size to prevent DoS (max 5000 bits roughly)
+        if p_high > 10**50:
+            logger.warning(f"Request too large: p_high={p_high}")
+            return jsonify({'success': False, 'error': 'Key size too large (max ~5000 bits)'}), 400
         
         logger.info(f"Generating RSA key with p_range: [{p_low}, {p_high}]")
         
@@ -157,12 +213,24 @@ def generate_key():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/encrypt', methods=['POST'])
+@validate_json_required
 def encrypt():
     """Encrypt message using RSA"""
     try:
         data = request.get_json()
         key_id = data.get('key_id')
         message = data.get('message', '')
+        
+        # Security: Validate input
+        if not key_id:
+            return jsonify({'success': False, 'error': 'key_id required'}), 400
+        
+        if not validate_key_id_format(key_id):
+            logger.warning(f"Invalid key_id format: {key_id}")
+            return jsonify({'success': False, 'error': 'Invalid key_id format'}), 400
+        
+        if not validate_message_length(message, max_length=50000):
+            return jsonify({'success': False, 'error': 'Message too long (max 50000 chars)'}), 400
         
         logger.info(f"Encryption request. Key ID: {key_id}, Message length: {len(message)}")
         
@@ -188,12 +256,27 @@ def encrypt():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/decrypt', methods=['POST'])
+@validate_json_required
 def decrypt():
     """Decrypt message using RSA"""
     try:
         data = request.get_json()
         key_id = data.get('key_id')
         ciphertext_blocks = data.get('ciphertext_blocks', [])
+        
+        # Security: Validate input
+        if not key_id:
+            return jsonify({'success': False, 'error': 'key_id required'}), 400
+        
+        if not validate_key_id_format(key_id):
+            logger.warning(f"Invalid key_id format: {key_id}")
+            return jsonify({'success': False, 'error': 'Invalid key_id format'}), 400
+        
+        if not isinstance(ciphertext_blocks, list):
+            return jsonify({'success': False, 'error': 'ciphertext_blocks must be a list'}), 400
+        
+        if len(ciphertext_blocks) > 1000:
+            return jsonify({'success': False, 'error': 'Too many blocks (max 1000)'}), 400
         
         logger.info(f"Decryption request. Key ID: {key_id}, Blocks count: {len(ciphertext_blocks)}")
         
@@ -221,12 +304,23 @@ def decrypt():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/sign', methods=['POST'])
+@validate_json_required
 def sign():
     """Sign message using RSA"""
     try:
         data = request.get_json()
         key_id = data.get('key_id')
         message = data.get('message', '')
+        
+        # Security: Validate input
+        if not key_id:
+            return jsonify({'success': False, 'error': 'key_id required'}), 400
+        
+        if not validate_key_id_format(key_id):
+            return jsonify({'success': False, 'error': 'Invalid key_id format'}), 400
+        
+        if not validate_message_length(message, max_length=10000):
+            return jsonify({'success': False, 'error': 'Message too long (max 10000 chars)'}), 400
         
         logger.info(f"Signing request. Key ID: {key_id}, Message length: {len(message)}")
         
@@ -251,6 +345,7 @@ def sign():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/verify', methods=['POST'])
+@validate_json_required
 def verify():
     """Verify signature using RSA"""
     try:
@@ -259,6 +354,16 @@ def verify():
         message = data.get('message', '')
         signature = data.get('signature', '')
         salt_hex = data.get('salt', '')
+        
+        # Security: Validate input
+        if not key_id or not message or not signature or not salt_hex:
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+        
+        if not validate_key_id_format(key_id):
+            return jsonify({'success': False, 'error': 'Invalid key_id format'}), 400
+        
+        if not validate_message_length(message, max_length=10000):
+            return jsonify({'success': False, 'error': 'Message too long'}), 400
         
         logger.info(f"Verification request. Key ID: {key_id}, Message length: {len(message)}")
         
@@ -286,11 +391,19 @@ def verify():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/factor', methods=['POST'])
+@validate_json_required
 def factor():
     """Factor n to demonstrate attack"""
     try:
         data = request.get_json()
         key_id = data.get('key_id')
+        
+        # Security: Validate input
+        if not key_id:
+            return jsonify({'success': False, 'error': 'key_id required'}), 400
+        
+        if not validate_key_id_format(key_id):
+            return jsonify({'success': False, 'error': 'Invalid key_id format'}), 400
         
         logger.info(f"Factor attack request. Key ID: {key_id}")
         

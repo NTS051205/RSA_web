@@ -6,14 +6,17 @@ import Signing from './components/Signing';
 import Factorization from './components/Factorization';
 import ToastNotification from './components/ToastNotification';
 import Chart from './components/Chart';
+import History from './components/History';
+import SecurityCheck from './components/SecurityCheck';
 import { ApiService } from './services/api';
 
 function App() {
   const [currentKey, setCurrentKey] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [apiHealth, setApiHealth] = useState(false);
-  const [activeTab, setActiveTab] = useState('operations'); // 'operations' or 'chart'
+  const [activeTab, setActiveTab] = useState('operations'); // 'operations' or 'chart' or 'history'
   const [performanceData, setPerformanceData] = useState([]);
+  const [history, setHistory] = useState([]);
 
   // Log function with toast notifications
   const addLog = (message, type = 'info') => {
@@ -45,6 +48,16 @@ function App() {
       timestamp: new Date().toLocaleTimeString('vi-VN')
     };
     setPerformanceData(prev => [...prev, newData]);
+  };
+
+  // Add history entry
+  const addHistory = (entry) => {
+    const historyEntry = {
+      id: Date.now(),
+      timestamp: new Date().toLocaleTimeString('vi-VN'),
+      ...entry
+    };
+    setHistory(prev => [historyEntry, ...prev]);
   };
 
   // Check API health
@@ -128,6 +141,12 @@ function App() {
         >
           📊 Biểu đồ Thời gian
         </button>
+        <button 
+          className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
+          onClick={() => setActiveTab('history')}
+        >
+          📜 Lịch sử
+        </button>
       </div>
 
       <div className="app-container">
@@ -138,18 +157,23 @@ function App() {
               setCurrentKey={setCurrentKey} 
               addLog={addLog}
               addPerformanceData={addPerformanceData}
+              addHistory={addHistory}
             />
+            
+            <SecurityCheck currentKey={currentKey} />
             
             <Encryption 
               currentKey={currentKey} 
               addLog={addLog}
               addPerformanceData={addPerformanceData}
+              addHistory={addHistory}
             />
             
             <Signing 
               currentKey={currentKey} 
               addLog={addLog}
               addPerformanceData={addPerformanceData}
+              addHistory={addHistory}
             />
             
             <Factorization 
@@ -163,6 +187,12 @@ function App() {
         {activeTab === 'chart' && (
           <div className="main-content">
             <Chart performanceData={performanceData} />
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="main-content">
+            <History history={history} />
           </div>
         )}
       </div>

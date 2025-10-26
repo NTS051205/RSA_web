@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ApiService } from '../services/api';
 
-function Signing({ currentKey, addLog }) {
+function Signing({ currentKey, addLog, addHistory, addPerformanceData }) {
   const [message, setMessage] = useState('Đây là chữ ký demo PSS-like.');
   const [verifyMessage, setVerifyMessage] = useState('Đây là chữ ký demo PSS-like.');
   const [signLoading, setSignLoading] = useState(false);
@@ -17,14 +17,34 @@ function Signing({ currentKey, addLog }) {
     }
     
     setSignLoading(true);
+    const startTime = performance.now();
+    
     try {
       addLog('Đang ký số với RSA-PSS...', 'info');
       const result = await ApiService.sign(currentKey.key_id, message);
+      
+      const endTime = performance.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(3);
       
       if (result.success) {
         setSignature(result.signature);
         setSalt(result.salt);
         addLog('Ký số thành công!', 'success');
+        addLog(`Thời gian: ${duration}s`, 'success');
+        
+        if (addPerformanceData) {
+          addPerformanceData('Sign', duration, currentKey.key_id);
+        }
+        
+        if (addHistory) {
+          addHistory({
+            type: 'sign',
+            keyId: currentKey.key_id,
+            message: message,
+            duration: parseFloat(duration),
+            signatureLength: result.signature.length
+          });
+        }
       } else {
         addLog('Lỗi ký số: ' + result.error, 'error');
       }
@@ -47,14 +67,34 @@ function Signing({ currentKey, addLog }) {
     }
     
     setVerifyLoading(true);
+    const startTime = performance.now();
+    
     try {
       addLog('Đang xác minh chữ ký...', 'info');
       const result = await ApiService.verify(currentKey.key_id, verifyMessage, signature, salt);
+      
+      const endTime = performance.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(3);
       
       if (result.success) {
         setVerifyResult(result.is_valid);
         addLog(`Xác minh: ${result.is_valid ? 'HỢP LỆ ✅' : 'KHÔNG HỢP LỆ ❌'}`, 
           result.is_valid ? 'success' : 'error');
+        addLog(`Thời gian: ${duration}s`, 'info');
+        
+        if (addPerformanceData) {
+          addPerformanceData('Verify', duration, currentKey.key_id);
+        }
+        
+        if (addHistory) {
+          addHistory({
+            type: 'verify',
+            keyId: currentKey.key_id,
+            message: verifyMessage,
+            duration: parseFloat(duration),
+            isValid: result.is_valid
+          });
+        }
       } else {
         addLog('Lỗi xác minh: ' + result.error, 'error');
       }

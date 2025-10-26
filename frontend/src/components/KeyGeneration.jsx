@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ApiService } from '../services/api';
 
-function KeyGeneration({ currentKey, setCurrentKey, addLog, addPerformanceData }) {
+function KeyGeneration({ currentKey, setCurrentKey, addLog, addPerformanceData, addHistory }) {
   // Values for ~100 bits key (fast for demo)
   const [pLow, setPLow] = useState('999999999999999');
   const [pHigh, setPHigh] = useState('9999999999999999');
@@ -49,6 +49,20 @@ function KeyGeneration({ currentKey, setCurrentKey, addLog, addPerformanceData }
         // Add performance data
         if (addPerformanceData) {
           addPerformanceData('Generate Key', duration, result.key_id);
+        }
+        
+        // Add to history
+        if (addHistory) {
+          addHistory({
+            type: 'generate_key',
+            keyId: result.key_id,
+            bitLength: result.public_key.bit_length,
+            duration: parseFloat(duration),
+            n: result.public_key.n,
+            e: result.public_key.e,
+            p: result.private_key.p,
+            q: result.private_key.q
+          });
         }
       } else {
         addLog('Lỗi sinh khóa: ' + result.error, 'error');

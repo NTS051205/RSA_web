@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ApiService } from '../services/api';
 
-function Encryption({ currentKey, addLog, addPerformanceData }) {
+function Encryption({ currentKey, addLog, addPerformanceData, addHistory }) {
   const [message, setMessage] = useState('Hello ATBM NEU!');
   const [encryptLoading, setEncryptLoading] = useState(false);
   const [decryptLoading, setDecryptLoading] = useState(false);
@@ -31,6 +31,17 @@ function Encryption({ currentKey, addLog, addPerformanceData }) {
         
         if (addPerformanceData) {
           addPerformanceData('Encrypt', duration, currentKey.key_id);
+        }
+        
+        // Add to history
+        if (addHistory) {
+          addHistory({
+            type: 'encrypt',
+            keyId: currentKey.key_id,
+            message: message,
+            duration: parseFloat(duration),
+            blockCount: result.block_count
+          });
         }
       } else {
         addLog('Lỗi mã hóa: ' + result.error, 'error');
@@ -70,6 +81,16 @@ function Encryption({ currentKey, addLog, addPerformanceData }) {
         
         if (addPerformanceData) {
           addPerformanceData('Decrypt', duration, currentKey.key_id);
+        }
+        
+        // Add to history
+        if (addHistory) {
+          addHistory({
+            type: 'decrypt',
+            keyId: currentKey.key_id,
+            message: result.plaintext,
+            duration: parseFloat(duration)
+          });
         }
       } else {
         addLog('Lỗi giải mã: ' + result.error, 'error');
