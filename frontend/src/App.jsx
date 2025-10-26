@@ -82,13 +82,13 @@ function App() {
       {/* Toast Notifications - Max 3 at once */}
       <div style={{
         position: 'fixed',
-        top: '80px',
+        top: '70px',
         right: '20px',
         zIndex: 10000,
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px',
-        maxWidth: '400px',
+        gap: '8px',
+        maxWidth: '320px',
       }}>
         {notifications.slice(0, 3).map(notification => (
           <ToastNotification
