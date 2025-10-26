@@ -178,10 +178,11 @@ def generate_key():
             logger.warning(f"Invalid range: p_low >= p_high")
             return jsonify({'success': False, 'error': 'p_low must be less than p_high'}), 400
         
-        # Security: Limit key size to prevent DoS (max 5000 bits roughly)
-        if p_high > 10**50:
+        # Security: Limit key size to prevent DoS (max ~4096 bits roughly)
+        # 10^150 is roughly 500 bits, 10^600 is roughly 2000 bits
+        if p_high > 10**600:
             logger.warning(f"Request too large: p_high={p_high}")
-            return jsonify({'success': False, 'error': 'Key size too large (max ~5000 bits)'}), 400
+            return jsonify({'success': False, 'error': 'Key size too large (max ~4096 bits - 10^600)'}), 400
         
         logger.info(f"Generating RSA key with p_range: [{p_low}, {p_high}]")
         
