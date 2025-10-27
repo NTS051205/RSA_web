@@ -7,6 +7,8 @@ import os
 import sys
 import re
 from functools import wraps
+from pymongo import MongoClient
+import json
 
 # Import RSA core from demo folder
 # Get the project root directory (parent of backend)
@@ -44,6 +46,18 @@ CORS(app)
 
 # Store keys (in production, use proper storage)
 keys_storage = {}
+
+# MongoDB connection
+try:
+    mongodb_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/')
+    mongo_client = MongoClient(mongodb_uri)
+    db = mongo_client.get_database('rsa_demo')
+    logs_collection = db.logs
+    logger.info("MongoDB connected successfully")
+except Exception as e:
+    logger.warning(f"MongoDB connection failed: {e}. Using local storage only.")
+    mongo_client = None
+    logs_collection = None
 
 # Security: Rate limiting (simple counter)
 request_counts = {}
@@ -428,6 +442,67 @@ def factor():
         })
     except Exception as e:
         logger.error(f"Error in factor attack: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/logs', methods=['POST'])
+def save_log():
+    """Save operation log to MongoDB"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        if logs_collection:
+            log_entry = {
+                'type': data.get('type', 'info'),
+                'message': data.get('message', ''),
+                'timestamp': datetime.now().isoformat(),
+                'operation': data.get('operation', ''),
+                'keyId': data.get('keyId'),
+                'duration': data.get('duration'),
+                'blockCount': data.get('blockCount'),
+                'isValid': data.get('isValid'),
+                'bitLength': data.get('bitLength'),
+                'signatureLength': data.get('signatureLength')
+            }
+            logs_collection.insert_one(log_entry)
+            logger.info("Log saved to MongoDB")
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error saving log: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/logs', methods=['GET'])
+def get_logs():
+    """Get logs from MongoDB"""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        
+        if logs_collection:
+            logs = list(logs_collection.find().sort('timestamp', -1).limit(limit))
+            # Convert ObjectId to string
+            for log in logs:
+                log['_id'] = str(log['_id'])
+            return jsonify({'success': True, 'logs': logs})
+        else:
+            return jsonify({'success': False, 'error': 'MongoDB not connected'}), 503
+    except Exception as e:
+        logger.error(f"Error getting logs: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/logs/clear', methods=['DELETE'])
+def clear_logs():
+    """Clear all logs from MongoDB"""
+    try:
+        if logs_collection:
+            result = logs_collection.delete_many({})
+            logger.info(f"Cleared {result.deleted_count} logs")
+            return jsonify({'success': True, 'deleted': result.deleted_count})
+        else:
+            return jsonify({'success': False, 'error': 'MongoDB not connected'}), 503
+    except Exception as e:
+        logger.error(f"Error clearing logs: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
