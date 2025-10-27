@@ -61,6 +61,24 @@ function App() {
     setHistory(newHistory);
     // Save to localStorage
     localStorage.setItem('rsa_history', JSON.stringify(newHistory));
+    
+    // Save to MongoDB
+    try {
+      ApiService.saveLog({
+        type: entry.type || 'info',
+        message: entry.message || `${entry.type || 'Operation'} performed`,
+        operation: entry.type,
+        keyId: entry.keyId,
+        duration: entry.duration,
+        blockCount: entry.blockCount,
+        isValid: entry.isValid,
+        bitLength: entry.bitLength,
+        signatureLength: entry.signatureLength,
+        message: entry.message
+      }).catch(err => console.error('Failed to save log to MongoDB:', err));
+    } catch (err) {
+      console.error('Error saving log:', err);
+    }
   };
 
   // Load history from localStorage on mount
