@@ -50,12 +50,19 @@ keys_storage = {}
 # MongoDB connection
 try:
     mongodb_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/')
-    mongo_client = MongoClient(mongodb_uri)
+    logger.info(f"Connecting to MongoDB: {mongodb_uri[:30]}...")
+    mongo_client = MongoClient(mongodb_uri, serverSelectionTimeoutMS=5000)
+    
+    # Test connection
+    mongo_client.admin.command('ping')
+    logger.info("MongoDB ping successful")
+    
+    # Get or create database
     db = mongo_client.get_database('rsa_demo')
     logs_collection = db.logs
-    logger.info("MongoDB connected successfully")
+    logger.info("MongoDB connected successfully to rsa_demo database")
 except Exception as e:
-    logger.warning(f"MongoDB connection failed: {e}. Using local storage only.")
+    logger.error(f"MongoDB connection failed: {e}", exc_info=True)
     mongo_client = None
     logs_collection = None
 
