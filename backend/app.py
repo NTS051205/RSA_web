@@ -51,7 +51,14 @@ keys_storage = {}
 try:
     mongodb_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/')
     logger.info(f"Connecting to MongoDB: {mongodb_uri[:30]}...")
-    mongo_client = MongoClient(mongodb_uri, serverSelectionTimeoutMS=5000)
+    # Add SSL parameters to work around Python 3.13 SSL issues
+    mongo_client = MongoClient(
+        mongodb_uri, 
+        serverSelectionTimeoutMS=5000,
+        tlsAllowInvalidCertificates=True,
+        ssl=True,
+        ssl_cert_reqs='CERT_NONE'
+    )
     
     # Get or create database directly (skip ping to avoid SSL issue)
     db = mongo_client.get_database('rsa_demo')
@@ -475,7 +482,7 @@ def save_log():
         
         return jsonify({'success': True})
     except Exception as e:
-        logger.error(f"Error saving log: {str(e)}", exc_info=True)
+        logger.error(f"Error saving log: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/logs', methods=['GET'])
