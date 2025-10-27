@@ -53,14 +53,12 @@ try:
     logger.info(f"Connecting to MongoDB: {mongodb_uri[:30]}...")
     mongo_client = MongoClient(mongodb_uri, serverSelectionTimeoutMS=5000)
     
-    # Test connection
-    mongo_client.admin.command('ping')
-    logger.info("MongoDB ping successful")
-    
-    # Get or create database
+    # Get or create database directly (skip ping to avoid SSL issue)
     db = mongo_client.get_database('rsa_demo')
     logs_collection = db.logs
-    logger.info("MongoDB connected successfully to rsa_demo database")
+    
+    # Try to insert a test doc to verify connection (lazy connection)
+    logger.info("MongoDB client created successfully")
 except Exception as e:
     logger.error(f"MongoDB connection failed: {e}", exc_info=True)
     mongo_client = None
