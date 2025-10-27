@@ -463,20 +463,24 @@ def save_log():
             return jsonify({'success': False, 'error': 'No data provided'}), 400
         
         if logs_collection is not None:
-            log_entry = {
-                'type': data.get('type', 'info'),
-                'message': data.get('message', ''),
-                'timestamp': datetime.now().isoformat(),
-                'operation': data.get('operation', ''),
-                'keyId': data.get('keyId'),
-                'duration': data.get('duration'),
-                'blockCount': data.get('blockCount'),
-                'isValid': data.get('isValid'),
-                'bitLength': data.get('bitLength'),
-                'signatureLength': data.get('signatureLength')
-            }
-            logs_collection.insert_one(log_entry)
-            logger.info("Log saved to MongoDB")
+            try:
+                log_entry = {
+                    'type': data.get('type', 'info'),
+                    'message': data.get('message', ''),
+                    'timestamp': datetime.now().isoformat(),
+                    'operation': data.get('operation', ''),
+                    'keyId': data.get('keyId'),
+                    'duration': data.get('duration'),
+                    'blockCount': data.get('blockCount'),
+                    'isValid': data.get('isValid'),
+                    'bitLength': data.get('bitLength'),
+                    'signatureLength': data.get('signatureLength')
+                }
+                logs_collection.insert_one(log_entry)
+                logger.info("Log saved to MongoDB")
+            except Exception as mongo_error:
+                # Silently fail MongoDB insert due to SSL issues
+                logger.debug(f"Could not save to MongoDB: {str(mongo_error)[:100]}")
         
         return jsonify({'success': True})
     except Exception as e:
