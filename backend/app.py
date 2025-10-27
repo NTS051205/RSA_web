@@ -55,9 +55,7 @@ try:
     mongo_client = MongoClient(
         mongodb_uri, 
         serverSelectionTimeoutMS=5000,
-        tlsAllowInvalidCertificates=True,
-        ssl=True,
-        ssl_cert_reqs='CERT_NONE'
+        tlsAllowInvalidCertificates=True
     )
     
     # Get or create database directly (skip ping to avoid SSL issue)
