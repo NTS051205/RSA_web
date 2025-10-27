@@ -452,7 +452,7 @@ def save_log():
         if not data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
         
-        if logs_collection:
+        if logs_collection is not None:
             log_entry = {
                 'type': data.get('type', 'info'),
                 'message': data.get('message', ''),
@@ -479,7 +479,7 @@ def get_logs():
     try:
         limit = request.args.get('limit', 50, type=int)
         
-        if logs_collection:
+        if logs_collection is not None:
             logs = list(logs_collection.find().sort('timestamp', -1).limit(limit))
             # Convert ObjectId to string
             for log in logs:
@@ -495,7 +495,7 @@ def get_logs():
 def clear_logs():
     """Clear all logs from MongoDB"""
     try:
-        if logs_collection:
+        if logs_collection is not None:
             result = logs_collection.delete_many({})
             logger.info(f"Cleared {result.deleted_count} logs")
             return jsonify({'success': True, 'deleted': result.deleted_count})
