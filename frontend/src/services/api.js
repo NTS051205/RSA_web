@@ -63,4 +63,19 @@ export const ApiService = {
     });
     return response.data;
   },
+
+  saveLog: async (logData) => {
+    const response = await api.post('/api/logs', logData);
+    return response.data;
+  },
+
+  getLogs: async (limit = 50) => {
+    const response = await api.get(`/api/logs?limit=${limit}`);
+    return response.data;
+  },
+
+  clearLogs: async () => {
+    const response = await api.delete('/api/logs/clear');
+    return response.data;
+  },
 };
