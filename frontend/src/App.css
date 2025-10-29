@@ -566,6 +566,95 @@ code {
   }
 }
 
+/* ========== CHART EMPTY STATE ========== */
+.empty-state {
+  text-align: center;
+  padding: 60px 40px;
+  color: #4a5568;
+  background: #f7fafc;
+  border-radius: 12px;
+  border: 2px dashed #cbd5e0;
+  width: 100%;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+}
+
+.empty-title {
+  font-size: 1.5rem;
+  margin-bottom: 16px;
+  color: #2d3748;
+}
+
+.empty-description {
+  font-size: 1.1rem;
+  margin-bottom: 24px;
+  color: #718096;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-bottom: 24px;
+  width: 100%;
+  max-width: 800px;
+}
+
+.step-card {
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.step-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.step-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+.step-title {
+  margin-bottom: 8px;
+  color: #667eea;
+}
+
+.step-description {
+  font-size: 0.9rem;
+  color: #718096;
+}
+
+.tip-box {
+  padding: 20px;
+  background: #e6fffa;
+  border-radius: 12px;
+  border: 1px solid #81e6d9;
+  font-size: 1rem;
+  color: #234e52;
+  width: 100%;
+  max-width: 800px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
 /* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
   .app-header {
@@ -608,6 +697,28 @@ code {
 
   .key-value {
     font-size: 0.75rem;
+  }
+
+  /* Chart empty state responsive */
+  .empty-state {
+    padding: 40px 20px;
+    min-height: 300px;
+  }
+
+  .steps-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    max-width: 100%;
+  }
+
+  .step-card {
+    min-height: 140px;
+    padding: 20px;
+  }
+
+  .tip-box {
+    padding: 16px;
+    font-size: 0.9rem;
   }
 }
 

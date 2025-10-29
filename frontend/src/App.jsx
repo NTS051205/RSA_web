@@ -1,5 +1,5 @@
 // App.jsx - Refactored main App component
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import KeyGeneration from './components/KeyGeneration';
 import Encryption from './components/Encryption';
@@ -20,6 +20,13 @@ import { TABS, TAB_LABELS } from './constants';
 function App() {
   const [currentKey, setCurrentKey] = useState(null);
   const [activeTab, setActiveTab] = useState(TABS.OPERATIONS);
+  const [chartViewMode, setChartViewMode] = useState('overview'); // 'overview' | 'algorithm' | 'chat'
+  
+  // Memoize setViewMode function to prevent unnecessary re-renders
+  const handleSetChartViewMode = useCallback((mode) => {
+    console.log('Setting chart view mode to:', mode);
+    setChartViewMode(mode);
+  }, []);
 
   // Custom hooks
   const { notifications, addNotification, clearAllNotifications } = useNotifications();
@@ -27,10 +34,12 @@ function App() {
   const { performanceData, addPerformanceData } = usePerformance();
   const { apiHealth, checkHealth } = useApiHealth();
 
-  // Clear notifications when switching tabs
+  // Clear notifications when switching tabs (but not when switching to chart)
   useEffect(() => {
     console.log('Tab changed to:', activeTab, 'Clearing notifications');
-    clearAllNotifications();
+    if (activeTab !== TABS.CHART) {
+      clearAllNotifications();
+    }
   }, [activeTab, clearAllNotifications]);
 
   // Clear all notifications on app start
@@ -104,6 +113,16 @@ function App() {
       </div>
 
       <div className="app-container">
+        {activeTab === TABS.CHART && (
+          <div className="main-content">
+            <Chart 
+              performanceData={performanceData} 
+              viewMode={chartViewMode}
+              setViewMode={handleSetChartViewMode}
+            />
+          </div>
+        )}
+
         {activeTab === TABS.OPERATIONS && (
           <div className="main-content">
             <KeyGeneration 
@@ -130,12 +149,6 @@ function App() {
               addPerformanceData={addPerformanceData}
               addHistory={addHistory}
             />
-          </div>
-        )}
-
-        {activeTab === TABS.CHART && (
-          <div className="main-content">
-            <Chart performanceData={performanceData} />
           </div>
         )}
 

@@ -1,16 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, memo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
-function Chart({ performanceData }) {
-  const [viewMode, setViewMode] = useState('overview'); // 'overview' | 'algorithm' | 'chat'
+function Chart({ performanceData, viewMode = 'overview', setViewMode }) {
+  // Debug logging
+  console.log('Chart render - viewMode:', viewMode, 'performanceData length:', performanceData?.length);
   
-  // Phân loại dữ liệu theo loại hoạt động
-  const algorithmData = performanceData.filter(item => 
-    ['Generate Key', 'Encrypt', 'Decrypt'].includes(item.operation)
+  // Track viewMode changes
+  useEffect(() => {
+    console.log('Chart viewMode changed to:', viewMode);
+  }, [viewMode]);
+  
+  // Phân loại dữ liệu theo loại hoạt động (memoized để tránh re-computation)
+  const algorithmData = useMemo(() => 
+    (performanceData || []).filter(item => 
+      ['Generate Key', 'Encrypt', 'Decrypt'].includes(item.operation)
+    ), [performanceData]
   );
   
-  const chatData = performanceData.filter(item => 
-    ['Generate Key (Alice)', 'Generate Key (Bob)', 'Encrypt (Chat)', 'Decrypt (Chat)'].includes(item.operation)
+  const chatData = useMemo(() => 
+    (performanceData || []).filter(item => 
+      ['Generate Key (Alice)', 'Generate Key (Bob)', 'Encrypt (Chat)', 'Decrypt (Chat)'].includes(item.operation)
+    ), [performanceData]
   );
   
   // Hàm chuyển đổi tên operation thành tên dễ hiểu
@@ -28,9 +38,9 @@ function Chart({ performanceData }) {
   };
   
   // Chuẩn bị dữ liệu cho biểu đồ tổng quan
-  const overviewData = performanceData.map((item, index) => ({
-    name: `${index + 1}`,
-    'Thời gian (s)': parseFloat(item.duration || 0),
+  const overviewData = (performanceData || []).map((item, index) => ({
+    name: `${getOperationName(item.operation)} ${index + 1}`,
+    'Thời gian (s)': parseFloat(item.duration || 0) || 0,
     operation: item.operation,
     type: ['Generate Key (Alice)', 'Generate Key (Bob)', 'Encrypt (Chat)', 'Decrypt (Chat)'].includes(item.operation) ? 'Chat' : 'Algorithm'
   }));
@@ -38,32 +48,33 @@ function Chart({ performanceData }) {
   // Chuẩn bị dữ liệu cho biểu đồ theo loại
   const algorithmChartData = algorithmData.map((item, index) => ({
     name: `${getOperationName(item.operation)} ${index + 1}`,
-    'Thời gian (s)': parseFloat(item.duration || 0),
+    'Thời gian (s)': parseFloat(item.duration || 0) || 0,
     operation: item.operation
   }));
   
   const chatChartData = chatData.map((item, index) => ({
     name: `${getOperationName(item.operation)} ${index + 1}`,
-    'Thời gian (s)': parseFloat(item.duration || 0),
+    'Thời gian (s)': parseFloat(item.duration || 0) || 0,
     operation: item.operation
   }));
   
   // Tính toán thống kê
   const getStats = (data) => {
     if (data.length === 0) return { avg: 0, max: 0, min: 0, total: 0, count: 0 };
-    const times = data.map(item => parseFloat(item.duration || 0));
+    const times = data.map(item => parseFloat(item.duration || 0)).filter(time => !isNaN(time));
+    if (times.length === 0) return { avg: 0, max: 0, min: 0, total: 0, count: 0 };
     return {
       avg: (times.reduce((a, b) => a + b, 0) / times.length).toFixed(3),
       max: Math.max(...times).toFixed(3),
       min: Math.min(...times).toFixed(3),
       total: times.reduce((a, b) => a + b, 0).toFixed(3),
-      count: data.length
+      count: times.length
     };
   };
   
   const algorithmStats = getStats(algorithmData);
   const chatStats = getStats(chatData);
-  const overallStats = getStats(performanceData);
+  const overallStats = getStats(performanceData || []);
 
   return (
     <div className="card">
@@ -79,6 +90,7 @@ function Chart({ performanceData }) {
         }}>
           <button
             onClick={() => setViewMode('overview')}
+            disabled={(performanceData || []).length === 0}
             style={{
               padding: '10px 20px',
               borderRadius: '8px',
@@ -86,14 +98,19 @@ function Chart({ performanceData }) {
               background: viewMode === 'overview' ? '#667eea' : '#f7fafc',
               color: viewMode === 'overview' ? 'white' : '#4a5568',
               fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.3s ease'
+              cursor: (performanceData || []).length === 0 ? 'not-allowed' : 'pointer',
+              transition: 'all 0.3s ease',
+              opacity: (performanceData || []).length === 0 ? 0.5 : 1
             }}
           >
             📈 Tổng quan
           </button>
           <button
-            onClick={() => setViewMode('algorithm')}
+            onClick={() => {
+              console.log('Algorithm button clicked, setting viewMode to algorithm');
+              setViewMode('algorithm');
+            }}
+            disabled={(performanceData || []).length === 0}
             style={{
               padding: '10px 20px',
               borderRadius: '8px',
@@ -101,14 +118,16 @@ function Chart({ performanceData }) {
               background: viewMode === 'algorithm' ? '#667eea' : '#f7fafc',
               color: viewMode === 'algorithm' ? 'white' : '#4a5568',
               fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.3s ease'
+              cursor: (performanceData || []).length === 0 ? 'not-allowed' : 'pointer',
+              transition: 'all 0.3s ease',
+              opacity: (performanceData || []).length === 0 ? 0.5 : 1
             }}
           >
             🔧 Trình bày giải thuật
           </button>
           <button
             onClick={() => setViewMode('chat')}
+            disabled={(performanceData || []).length === 0}
             style={{
               padding: '10px 20px',
               borderRadius: '8px',
@@ -116,24 +135,42 @@ function Chart({ performanceData }) {
               background: viewMode === 'chat' ? '#667eea' : '#f7fafc',
               color: viewMode === 'chat' ? 'white' : '#4a5568',
               fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.3s ease'
+              cursor: (performanceData || []).length === 0 ? 'not-allowed' : 'pointer',
+              transition: 'all 0.3s ease',
+              opacity: (performanceData || []).length === 0 ? 0.5 : 1
             }}
           >
             💬 Chat RSA
           </button>
         </div>
 
-        {performanceData.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '40px',
-            color: '#718096'
-          }}>
-            <p style={{ fontSize: '1.1rem' }}>Chưa có dữ liệu hiệu suất</p>
-            <p style={{ fontSize: '0.9rem', marginTop: '8px' }}>
-              Thực hiện các thao tác RSA để xem biểu đồ
+        {(performanceData || []).length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">📊</div>
+            <h3 className="empty-title">Chưa có dữ liệu hiệu suất</h3>
+            <p className="empty-description">
+              Để xem biểu đồ và thống kê, hãy thực hiện các thao tác RSA sau:
             </p>
+            <div className="steps-grid">
+              <div className="step-card">
+                <div className="step-icon">🔑</div>
+                <h4 className="step-title">1. Sinh khóa</h4>
+                <p className="step-description">Chuyển sang tab "RSA cơ bản" và sinh khóa RSA</p>
+              </div>
+              <div className="step-card">
+                <div className="step-icon">🔒</div>
+                <h4 className="step-title">2. Mã hóa</h4>
+                <p className="step-description">Nhập tin nhắn và thực hiện mã hóa</p>
+              </div>
+              <div className="step-card">
+                <div className="step-icon">🔓</div>
+                <h4 className="step-title">3. Giải mã</h4>
+                <p className="step-description">Thực hiện giải mã để hoàn thành chu trình</p>
+              </div>
+            </div>
+            <div className="tip-box">
+              <strong>💡 Mẹo:</strong> Sau khi thực hiện các thao tác trên, quay lại tab này để xem biểu đồ và thống kê chi tiết!
+            </div>
           </div>
         ) : (
           <>
@@ -246,63 +283,65 @@ function Chart({ performanceData }) {
               </div>
             )}
 
-            {/* Statistics */}
-            <div style={{ marginTop: '24px', padding: '20px', background: '#f7fafc', borderRadius: '12px' }}>
-              <h4 style={{ marginBottom: '16px', color: '#2d3748' }}>📈 Thống kê chi tiết</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                {/* Overall Stats */}
-                <div style={{ padding: '16px', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <h5 style={{ color: '#667eea', marginBottom: '12px' }}>📊 Tổng quan</h5>
-                  <div style={{ fontSize: '0.9rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span>Số thao tác:</span>
-                      <span style={{ fontWeight: 600 }}>{overallStats.count}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span>Trung bình:</span>
-                      <span style={{ fontWeight: 600 }}>{overallStats.avg}s</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span>Tổng thời gian:</span>
-                      <span style={{ fontWeight: 600 }}>{overallStats.total}s</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Algorithm Stats */}
-                <div style={{ padding: '16px', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <h5 style={{ color: '#10b981', marginBottom: '12px' }}>🔧 Giải thuật</h5>
-                  <div style={{ fontSize: '0.9rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span>Số thao tác:</span>
-                      <span style={{ fontWeight: 600 }}>{algorithmStats.count}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span>Trung bình:</span>
-                      <span style={{ fontWeight: 600 }}>{algorithmStats.avg}s</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span>Tổng thời gian:</span>
-                      <span style={{ fontWeight: 600 }}>{algorithmStats.total}s</span>
+            {/* Statistics - Always show */}
+            <div className="card" style={{ marginTop: '24px' }}>
+              <h2>📈 Thống kê chi tiết</h2>
+              <div className="card-content">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                  {/* Overall Stats */}
+                  <div style={{ padding: '20px', background: '#f8fafc', borderRadius: '12px', border: '2px solid #e2e8f0' }}>
+                    <h3 style={{ color: '#667eea', marginBottom: '16px', fontSize: '1.1rem' }}>📊 Tổng quan</h3>
+                    <div style={{ fontSize: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '8px 0', borderBottom: '1px solid #e2e8f0' }}>
+                        <span>Số thao tác:</span>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{overallStats.count}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '8px 0', borderBottom: '1px solid #e2e8f0' }}>
+                        <span>Trung bình:</span>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{overallStats.avg}s</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '8px 0' }}>
+                        <span>Tổng thời gian:</span>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{overallStats.total}s</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Chat Stats */}
-                <div style={{ padding: '16px', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <h5 style={{ color: '#f59e0b', marginBottom: '12px' }}>💬 Chat</h5>
-                  <div style={{ fontSize: '0.9rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span>Số thao tác:</span>
-                      <span style={{ fontWeight: 600 }}>{chatStats.count}</span>
+                  {/* Algorithm Stats */}
+                  <div style={{ padding: '20px', background: '#f0fdf4', borderRadius: '12px', border: '2px solid #bbf7d0' }}>
+                    <h3 style={{ color: '#10b981', marginBottom: '16px', fontSize: '1.1rem' }}>🔧 Giải thuật</h3>
+                    <div style={{ fontSize: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '8px 0', borderBottom: '1px solid #bbf7d0' }}>
+                        <span>Số thao tác:</span>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{algorithmStats.count}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '8px 0', borderBottom: '1px solid #bbf7d0' }}>
+                        <span>Trung bình:</span>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{algorithmStats.avg}s</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '8px 0' }}>
+                        <span>Tổng thời gian:</span>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{algorithmStats.total}s</span>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span>Trung bình:</span>
-                      <span style={{ fontWeight: 600 }}>{chatStats.avg}s</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span>Tổng thời gian:</span>
-                      <span style={{ fontWeight: 600 }}>{chatStats.total}s</span>
+                  </div>
+
+                  {/* Chat Stats */}
+                  <div style={{ padding: '20px', background: '#fffbeb', borderRadius: '12px', border: '2px solid #fed7aa' }}>
+                    <h3 style={{ color: '#f59e0b', marginBottom: '16px', fontSize: '1.1rem' }}>💬 Chat</h3>
+                    <div style={{ fontSize: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '8px 0', borderBottom: '1px solid #fed7aa' }}>
+                        <span>Số thao tác:</span>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{chatStats.count}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '8px 0', borderBottom: '1px solid #fed7aa' }}>
+                        <span>Trung bình:</span>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{chatStats.avg}s</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '8px 0' }}>
+                        <span>Tổng thời gian:</span>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{chatStats.total}s</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -325,4 +364,4 @@ function Chart({ performanceData }) {
   );
 }
 
-export default Chart;
+export default memo(Chart);
