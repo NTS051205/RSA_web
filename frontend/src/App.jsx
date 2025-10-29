@@ -1,3 +1,4 @@
+// App.jsx - Refactored main App component
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import KeyGeneration from './components/KeyGeneration';
@@ -5,160 +6,65 @@ import Encryption from './components/Encryption';
 import ToastNotification from './components/ToastNotification';
 import Chart from './components/Chart';
 import History from './components/History';
-import { ApiService } from './services/api';
 import RSAChat from './components/RSAChat';
+
+// Import custom hooks
+import { useNotifications } from './hooks/useNotifications';
+import { useHistory } from './hooks/useHistory';
+import { usePerformance } from './hooks/usePerformance';
+import { useApiHealth } from './hooks/useApiHealth';
+
+// Import constants
+import { TABS, TAB_LABELS } from './constants';
 
 function App() {
   const [currentKey, setCurrentKey] = useState(null);
-  const [notifications, setNotifications] = useState([]);
-  const [apiHealth, setApiHealth] = useState(false);
-  const [activeTab, setActiveTab] = useState('operations'); // 'operations' (RSA cơ bản) | 'chat' (Nâng cao) | 'chart' | 'history'
-  const [performanceData, setPerformanceData] = useState([]);
-  const [history, setHistory] = useState([]);
+  const [activeTab, setActiveTab] = useState(TABS.OPERATIONS);
 
-  // Log function with toast notifications
-  const addLog = (message, type = 'info', targetTab = null) => {
-    const timestamp = new Date().toLocaleTimeString('vi-VN');
-    
-    // Add notification with target tab info
-    const newNotification = { 
-      id: Date.now(), 
-      message, 
-      type, 
-      timestamp,
-      targetTab: targetTab || activeTab // Default to current tab if not specified
-    };
-    setNotifications(prev => [...prev, newNotification]);
-    
-    // Auto remove after 4s
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== newNotification.id));
-    }, 4000);
-    
-    console.log(`[${type.toUpperCase()}] ${timestamp}: ${message}`);
-  };
-
-  const removeNotification = (id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  const clearAllNotifications = () => {
-    setNotifications([]);
-  };
+  // Custom hooks
+  const { notifications, addNotification, clearAllNotifications } = useNotifications();
+  const { history, addHistory, clearHistory } = useHistory();
+  const { performanceData, addPerformanceData } = usePerformance();
+  const { apiHealth, checkHealth } = useApiHealth();
 
   // Clear notifications when switching tabs
   useEffect(() => {
     console.log('Tab changed to:', activeTab, 'Clearing notifications');
     clearAllNotifications();
-  }, [activeTab]);
+  }, [activeTab, clearAllNotifications]);
 
   // Clear all notifications on app start
   useEffect(() => {
     console.log('App started, clearing all notifications');
     clearAllNotifications();
-  }, []);
+  }, [clearAllNotifications]);
 
-  // Add performance data for chart
-  const addPerformanceData = (operation, duration, keyId) => {
-    const newData = {
-      id: Date.now(),
-      operation,
-      duration,
-      keyId,
-      timestamp: new Date().toLocaleTimeString('vi-VN')
-    };
-    setPerformanceData(prev => [...prev, newData]);
-  };
-
-  // Add history entry
-  const addHistory = (entry) => {
-    const historyEntry = {
-      id: Date.now(),
-      timestamp: new Date().toLocaleTimeString('vi-VN'),
-      ...entry
-    };
-    const newHistory = [historyEntry, ...history];
-    setHistory(newHistory);
-    // Save to localStorage
-    localStorage.setItem('rsa_history', JSON.stringify(newHistory));
+  // Enhanced addLog function with API health check
+  const addLog = async (message, type = 'info', targetTab = null) => {
+    addNotification(message, type, targetTab, activeTab);
     
-    // Save to MongoDB
-    try {
-      ApiService.saveLog({
-        type: entry.type || 'info',
-        message: entry.message || `${entry.type || 'Operation'} performed`,
-        operation: entry.type,
-        keyId: entry.keyId,
-        duration: entry.duration,
-        blockCount: entry.blockCount,
-        isValid: entry.isValid,
-        bitLength: entry.bitLength,
-        signatureLength: entry.signatureLength
-      }).catch(err => console.error('Failed to save log to MongoDB:', err));
-    } catch (err) {
-      console.error('Error saving log:', err);
+    // If it's a success message and API is offline, try to reconnect
+    if (type === 'success' && !apiHealth) {
+      await checkHealth();
     }
   };
 
-  // Clear all history (local only, keep MongoDB logs for admin)
-  const clearHistory = async () => {
-    try {
-      // Clear local state only
-      setHistory([]);
-      
-      // Clear localStorage only
-      localStorage.removeItem('rsa_history');
-      
-      // Note: MongoDB logs are kept for admin review
-      
+  // Enhanced clearHistory function
+  const handleClearHistory = async () => {
+    const success = await clearHistory();
+    if (success) {
       addLog('Đã xóa lịch sử hiển thị thành công', 'success');
-    } catch (error) {
-      console.error('Error clearing history:', error);
-      addLog('Lỗi khi xóa lịch sử: ' + error.message, 'error');
+    } else {
+      addLog('Lỗi khi xóa lịch sử', 'error');
     }
   };
-
-  // Load history from localStorage on mount
-  useEffect(() => {
-    const savedHistory = localStorage.getItem('rsa_history');
-    if (savedHistory) {
-      try {
-        const parsed = JSON.parse(savedHistory);
-        const cleaned = Array.isArray(parsed)
-          ? parsed.filter(h => h.type !== 'sign' && h.type !== 'verify')
-          : [];
-        setHistory(cleaned);
-        // persist cleaned history
-        localStorage.setItem('rsa_history', JSON.stringify(cleaned));
-      } catch (e) {
-        console.error('Failed to load history:', e);
-      }
-    }
-  }, []);
-
-  // Check API health
-  useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        await ApiService.health();
-        setApiHealth(true);
-        addLog('Kết nối API thành công', 'success');
-      } catch (error) {
-        setApiHealth(false);
-        addLog('Không thể kết nối API: ' + error.message, 'error');
-      }
-    };
-    checkHealth();
-    const interval = setInterval(checkHealth, 30000); // Check every 30s
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className="App">
       {/* Toast Notifications - Disabled */}
 
       <header className="app-header">
-        <h1>🔐 RSA Demo - An toàn và Bảo mật Thông tin</h1>
+        <h1>🔐 RSA Demo - An toàn và Bảo mật thông tin</h1>
         <div className="header-status">
           <span className={`status-indicator ${apiHealth ? 'online' : 'offline'}`}>
             {apiHealth ? '● API Online' : '○ API Offline'}
@@ -186,73 +92,56 @@ function App() {
 
       {/* Tab Navigation */}
       <div className="tab-navigation">
-        <button 
-          className={`tab-button ${activeTab === 'operations' ? 'active' : ''}`}
-          onClick={() => setActiveTab('operations')}
-        >
-          📘 RSA cơ bản (Giải thuật)
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'chat' ? 'active' : ''}`}
-          onClick={() => setActiveTab('chat')}
-        >
-          🚀 Nâng cao (Hybrid Chat)
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'chart' ? 'active' : ''}`}
-          onClick={() => setActiveTab('chart')}
-        >
-          📊 Biểu đồ Thời gian
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          📜 Lịch sử
-        </button>
+        {Object.entries(TAB_LABELS).map(([key, label]) => (
+          <button 
+            key={key}
+            className={`tab-button ${activeTab === key ? 'active' : ''}`}
+            onClick={() => setActiveTab(key)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       <div className="app-container">
-        {activeTab === 'operations' && (
+        {activeTab === TABS.OPERATIONS && (
           <div className="main-content">
             <KeyGeneration 
               currentKey={currentKey} 
               setCurrentKey={setCurrentKey} 
-              addLog={(message, type) => addLog(message, type, 'operations')}
+              addLog={(message, type) => addLog(message, type, TABS.OPERATIONS)}
               addPerformanceData={addPerformanceData}
               addHistory={addHistory}
             />
             
             <Encryption 
               currentKey={currentKey} 
-              addLog={(message, type) => addLog(message, type, 'operations')}
+              addLog={(message, type) => addLog(message, type, TABS.OPERATIONS)}
               addPerformanceData={addPerformanceData}
               addHistory={addHistory}
             />
-
-            {/* Factorization demo removed in new version */}
           </div>
         )}
 
-        {activeTab === 'chat' && (
+        {activeTab === TABS.CHAT && (
           <div className="main-content">
             <RSAChat
-              addLog={(message, type) => addLog(message, type, 'chat')}
+              addLog={(message, type) => addLog(message, type, TABS.CHAT)}
               addPerformanceData={addPerformanceData}
               addHistory={addHistory}
             />
           </div>
         )}
 
-        {activeTab === 'chart' && (
+        {activeTab === TABS.CHART && (
           <div className="main-content">
             <Chart performanceData={performanceData} />
           </div>
         )}
 
-        {activeTab === 'history' && (
+        {activeTab === TABS.HISTORY && (
           <div className="main-content">
-            <History history={history} onClearHistory={clearHistory} />
+            <History history={history} onClearHistory={handleClearHistory} />
           </div>
         )}
       </div>
