@@ -18,7 +18,20 @@ sys.path.insert(0, demo_dir)
 
 # Try importing with error handling
 try:
-    from rsa_core import generate_rsa, RSAKey, rsa_encrypt_bytes, rsa_decrypt_bytes, pss_sign, pss_verify, factor_demo
+    from rsa_core import (
+        generate_rsa,
+        RSAKey,
+        rsa_encrypt_text,
+        rsa_decrypt_text,
+        rsa_encrypt_packed,
+        rsa_decrypt_packed,
+        pack_packed,
+        unpack_packed,
+        int_list_to_b64,
+        b64_to_int_list,
+        export_public,
+        export_private,
+    )
 except ImportError as e:
     print(f"ERROR: Cannot import rsa_core from {demo_dir}")
     print(f"Error: {e}")
@@ -166,9 +179,8 @@ def index():
             <div class="endpoint">POST /api/generate-key</div>
             <div class="endpoint">POST /api/encrypt</div>
             <div class="endpoint">POST /api/decrypt</div>
-            <div class="endpoint">POST /api/sign</div>
-            <div class="endpoint">POST /api/verify</div>
-            <div class="endpoint">POST /api/factor</div>
+            <div class="endpoint">POST /api/encrypt (mode: text | packed)</div>
+            <div class="endpoint">POST /api/decrypt (mode: text | packed)</div>
         </div>
     </body>
     </html>
@@ -186,31 +198,23 @@ def generate_key():
     """Generate new RSA key pair"""
     try:
         data = request.get_json() or {}
-        p_low = data.get('p_low', 10**9)
-        p_high = data.get('p_high', 2*10**9)
+        bits = data.get('bits', 1024)
         
         # Convert to int to avoid float issues
-        p_low = int(float(p_low)) if isinstance(p_low, (str, float)) else int(p_low)
-        p_high = int(float(p_high)) if isinstance(p_high, (str, float)) else int(p_high)
+        bits = int(float(bits)) if isinstance(bits, (str, float)) else int(bits)
         
-        # Security: Validate range
-        if p_low < 1000 or p_high < 1000:
-            logger.warning(f"Invalid p_low/p_high values: p_low={p_low}, p_high={p_high}")
-            return jsonify({'success': False, 'error': 'p_low and p_high must be at least 1000'}), 400
+        # Security: Validate range (cho phép bit size nhỏ cho demo)
+        if bits < 32:
+            logger.warning(f"Invalid bits value: {bits}")
+            return jsonify({'success': False, 'error': 'bits must be at least 32'}), 400
         
-        if p_low >= p_high:
-            logger.warning(f"Invalid range: p_low >= p_high")
-            return jsonify({'success': False, 'error': 'p_low must be less than p_high'}), 400
+        if bits > 4096:
+            logger.warning(f"Request too large: bits={bits}")
+            return jsonify({'success': False, 'error': 'Key size too large (max 4096 bits)'}), 400
         
-        # Security: Limit key size to prevent DoS (max ~4096 bits roughly)
-        # 10^150 is roughly 500 bits, 10^600 is roughly 2000 bits
-        if p_high > 10**600:
-            logger.warning(f"Request too large: p_high={p_high}")
-            return jsonify({'success': False, 'error': 'Key size too large (max ~4096 bits - 10^600)'}), 400
+        logger.info(f"Generating RSA key with bits: {bits}")
         
-        logger.info(f"Generating RSA key with p_range: [{p_low}, {p_high}]")
-        
-        key = generate_rsa(p_low, p_high)
+        key = generate_rsa(bits)
         
         # Store key (in production, use secure storage)
         key_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -221,17 +225,9 @@ def generate_key():
         return jsonify({
             'success': True,
             'key_id': key_id,
-            'public_key': {
-                'n': str(key.n),
-                'e': str(key.e),
-                'bit_length': key.n.bit_length()
-            },
-            'private_key': {
-                'n': str(key.n),
-                'd': str(key.d),
-                'p': str(key.p),
-                'q': str(key.q)
-            }
+            'public_key': export_public(key),
+            'private_key': export_private(key),
+            'bit_length': key.n.bit_length()
         })
     except Exception as e:
         logger.error(f"Error generating key: {str(e)}", exc_info=True)
@@ -240,42 +236,52 @@ def generate_key():
 @app.route('/api/encrypt', methods=['POST'])
 @validate_json_required
 def encrypt():
-    """Encrypt message using RSA"""
+    """Encrypt message using RSA in two modes: 'text' or 'packed'"""
     try:
         data = request.get_json()
         key_id = data.get('key_id')
         message = data.get('message', '')
-        
+        mode = (data.get('mode') or 'text').strip().lower()
+
         # Security: Validate input
         if not key_id:
             return jsonify({'success': False, 'error': 'key_id required'}), 400
-        
+
         if not validate_key_id_format(key_id):
             logger.warning(f"Invalid key_id format: {key_id}")
             return jsonify({'success': False, 'error': 'Invalid key_id format'}), 400
-        
+
         if not validate_message_length(message, max_length=50000):
             return jsonify({'success': False, 'error': 'Message too long (max 50000 chars)'}), 400
-        
-        logger.info(f"Encryption request. Key ID: {key_id}, Message length: {len(message)}")
-        
+
         if key_id not in keys_storage:
             logger.error(f"Key not found: {key_id}")
             return jsonify({'success': False, 'error': 'Key not found'}), 404
-        
+
         key = keys_storage[key_id]
-        
-        # Encrypt
-        plaintext_bytes = message.encode('utf-8')
-        ciphertext_blocks = rsa_encrypt_bytes(plaintext_bytes, key)
-        
-        logger.info(f"Encryption successful. Blocks count: {len(ciphertext_blocks)}")
-        
-        return jsonify({
-            'success': True,
-            'ciphertext_blocks': [str(c) for c in ciphertext_blocks],
-            'block_count': len(ciphertext_blocks)
-        })
+
+        logger.info(f"Encryption request. mode={mode} Key ID: {key_id}, Message length: {len(message)}")
+
+        if mode == 'text':
+            blocks = rsa_encrypt_text(message, key)  # list[int]
+            blocks_b64 = int_list_to_b64(blocks)
+            return jsonify({
+                'success': True,
+                'mode': 'text',
+                'ciphertext_blocks_b64': blocks_b64,
+                'block_count': len(blocks_b64)
+            })
+        elif mode == 'packed':
+            blocks, sizes = rsa_encrypt_packed(message, key)  # tuple of lists
+            packed_data = pack_packed(blocks, sizes)
+            return jsonify({
+                'success': True,
+                'mode': 'packed',
+                'ciphertext': packed_data,
+                'block_count': len(blocks)
+            })
+        else:
+            return jsonify({'success': False, 'error': "Invalid mode. Use 'text' or 'packed'"}), 400
     except Exception as e:
         logger.error(f"Error encrypting: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -283,176 +289,59 @@ def encrypt():
 @app.route('/api/decrypt', methods=['POST'])
 @validate_json_required
 def decrypt():
-    """Decrypt message using RSA"""
+    """Decrypt message using RSA in two modes: 'text' or 'packed'"""
     try:
         data = request.get_json()
         key_id = data.get('key_id')
-        ciphertext_blocks = data.get('ciphertext_blocks', [])
-        
-        # Security: Validate input
+        mode = (data.get('mode') or 'text').strip().lower()
+
         if not key_id:
             return jsonify({'success': False, 'error': 'key_id required'}), 400
-        
+
         if not validate_key_id_format(key_id):
             logger.warning(f"Invalid key_id format: {key_id}")
             return jsonify({'success': False, 'error': 'Invalid key_id format'}), 400
-        
-        if not isinstance(ciphertext_blocks, list):
-            return jsonify({'success': False, 'error': 'ciphertext_blocks must be a list'}), 400
-        
-        if len(ciphertext_blocks) > 1000:
-            return jsonify({'success': False, 'error': 'Too many blocks (max 1000)'}), 400
-        
-        logger.info(f"Decryption request. Key ID: {key_id}, Blocks count: {len(ciphertext_blocks)}")
-        
+
         if key_id not in keys_storage:
             logger.error(f"Key not found: {key_id}")
             return jsonify({'success': False, 'error': 'Key not found'}), 404
-        
+
         key = keys_storage[key_id]
-        
-        # Convert string blocks to integers
-        ct_blocks_int = [int(c) for c in ciphertext_blocks]
-        
-        # Decrypt
-        plaintext_bytes = rsa_decrypt_bytes(ct_blocks_int, key)
-        plaintext = plaintext_bytes.decode('utf-8')
-        
-        logger.info(f"Decryption successful. Plaintext length: {len(plaintext)}")
-        
-        return jsonify({
-            'success': True,
-            'plaintext': plaintext
-        })
+
+        if mode == 'text':
+            blocks_b64 = data.get('ciphertext_blocks_b64', [])
+            if not isinstance(blocks_b64, list):
+                return jsonify({'success': False, 'error': 'ciphertext_blocks_b64 must be a list'}), 400
+            if len(blocks_b64) > 1000:
+                return jsonify({'success': False, 'error': 'Too many blocks (max 1000)'}), 400
+
+            logger.info(f"Decryption request (text). Key ID: {key_id}, Blocks count: {len(blocks_b64)}")
+
+            ct_blocks = b64_to_int_list(blocks_b64)
+            plaintext = rsa_decrypt_text(ct_blocks, key)
+            return jsonify({'success': True, 'mode': 'text', 'plaintext': plaintext})
+
+        elif mode == 'packed':
+            ciphertext = data.get('ciphertext', {})
+            if not isinstance(ciphertext, dict) or 'c' not in ciphertext or 'sizes' not in ciphertext:
+                return jsonify({'success': False, 'error': 'ciphertext must contain c and sizes fields'}), 400
+
+            logger.info(f"Decryption request (packed). Key ID: {key_id}")
+
+            blocks, sizes = unpack_packed(ciphertext)
+            plaintext = rsa_decrypt_packed(blocks, sizes, key)
+            return jsonify({'success': True, 'mode': 'packed', 'plaintext': plaintext})
+        else:
+            return jsonify({'success': False, 'error': "Invalid mode. Use 'text' or 'packed'"}), 400
     except Exception as e:
         logger.error(f"Error decrypting: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/sign', methods=['POST'])
-@validate_json_required
-def sign():
-    """Sign message using RSA"""
-    try:
-        data = request.get_json()
-        key_id = data.get('key_id')
-        message = data.get('message', '')
-        
-        # Security: Validate input
-        if not key_id:
-            return jsonify({'success': False, 'error': 'key_id required'}), 400
-        
-        if not validate_key_id_format(key_id):
-            return jsonify({'success': False, 'error': 'Invalid key_id format'}), 400
-        
-        if not validate_message_length(message, max_length=10000):
-            return jsonify({'success': False, 'error': 'Message too long (max 10000 chars)'}), 400
-        
-        logger.info(f"Signing request. Key ID: {key_id}, Message length: {len(message)}")
-        
-        if key_id not in keys_storage:
-            logger.error(f"Key not found: {key_id}")
-            return jsonify({'success': False, 'error': 'Key not found'}), 404
-        
-        key = keys_storage[key_id]
-        
-        # Sign
-        signature, salt = pss_sign(message.encode('utf-8'), key)
-        
-        logger.info(f"Signing successful")
-        
-        return jsonify({
-            'success': True,
-            'signature': str(signature),
-            'salt': salt.hex()
-        })
-    except Exception as e:
-        logger.error(f"Error signing: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+# NOTE: Sign/Verify endpoints removed because rsa_core no longer provides PSS helpers
 
-@app.route('/api/verify', methods=['POST'])
-@validate_json_required
-def verify():
-    """Verify signature using RSA"""
-    try:
-        data = request.get_json()
-        key_id = data.get('key_id')
-        message = data.get('message', '')
-        signature = data.get('signature', '')
-        salt_hex = data.get('salt', '')
-        
-        # Security: Validate input
-        if not key_id or not message or not signature or not salt_hex:
-            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
-        
-        if not validate_key_id_format(key_id):
-            return jsonify({'success': False, 'error': 'Invalid key_id format'}), 400
-        
-        if not validate_message_length(message, max_length=10000):
-            return jsonify({'success': False, 'error': 'Message too long'}), 400
-        
-        logger.info(f"Verification request. Key ID: {key_id}, Message length: {len(message)}")
-        
-        if key_id not in keys_storage:
-            logger.error(f"Key not found: {key_id}")
-            return jsonify({'success': False, 'error': 'Key not found'}), 404
-        
-        key = keys_storage[key_id]
-        
-        # Convert hex string back to bytes
-        salt = bytes.fromhex(salt_hex)
-        sig_int = int(signature)
-        
-        # Verify
-        is_valid = pss_verify(message.encode('utf-8'), sig_int, salt, key)
-        
-        logger.info(f"Verification result: {is_valid}")
-        
-        return jsonify({
-            'success': True,
-            'is_valid': is_valid
-        })
-    except Exception as e:
-        logger.error(f"Error verifying: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+pass
 
-@app.route('/api/factor', methods=['POST'])
-@validate_json_required
-def factor():
-    """Factor n to demonstrate attack"""
-    try:
-        data = request.get_json()
-        key_id = data.get('key_id')
-        
-        # Security: Validate input
-        if not key_id:
-            return jsonify({'success': False, 'error': 'key_id required'}), 400
-        
-        if not validate_key_id_format(key_id):
-            return jsonify({'success': False, 'error': 'Invalid key_id format'}), 400
-        
-        logger.info(f"Factor attack request. Key ID: {key_id}")
-        
-        if key_id not in keys_storage:
-            logger.error(f"Key not found: {key_id}")
-            return jsonify({'success': False, 'error': 'Key not found'}), 404
-        
-        key = keys_storage[key_id]
-        
-        # Factor
-        method, factor, time_taken = factor_demo(key.n)
-        
-        logger.info(f"Factor attack completed. Method: {method}, Factor: {factor}, Time: {time_taken:.3f}s")
-        
-        return jsonify({
-            'success': True,
-            'method': method,
-            'factor': str(factor) if factor else None,
-            'time_seconds': time_taken,
-            'found': factor is not None
-        })
-    except Exception as e:
-        logger.error(f"Error in factor attack: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+# NOTE: Factor endpoint removed because rsa_core no longer provides factor_demo
 
 @app.route('/api/logs', methods=['POST'])
 def save_log():
@@ -521,4 +410,4 @@ def clear_logs():
 
 if __name__ == '__main__':
     logger.info("Starting RSA Demo API Server")
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5001)))

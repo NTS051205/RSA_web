@@ -29,7 +29,19 @@ function ToastNotification({ message, type = 'info', onClose }) {
 
   return (
     <div 
-      onClick={onClose}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Notification clicked'); // Debug log
+        onClose();
+      }}
+      onDoubleClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Notification double clicked'); // Debug log
+        onClose();
+      }}
+      className="toast-notification"
       style={{
         background: getColor(),
         color: 'white',
@@ -42,10 +54,10 @@ function ToastNotification({ message, type = 'info', onClose }) {
         minWidth: '240px',
         maxWidth: '320px',
         animation: 'slideInRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        zIndex: 10000,
         backdropFilter: 'blur(20px)',
         border: '1px solid rgba(255, 255, 255, 0.1)',
         cursor: 'pointer',
+        userSelect: 'none', // Prevent text selection
       }}
     >
       <div style={{ 
@@ -76,7 +88,9 @@ function ToastNotification({ message, type = 'info', onClose }) {
       </div>
       <button
         onClick={(e) => {
+          e.preventDefault();
           e.stopPropagation();
+          console.log('Close button clicked'); // Debug log
           onClose();
         }}
         style={{
@@ -95,7 +109,9 @@ function ToastNotification({ message, type = 'info', onClose }) {
           justifyContent: 'center',
           lineHeight: 1,
           fontWeight: 300,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          userSelect: 'none',
+          zIndex: 10001, // Higher than notification
         }}
         onMouseOver={(e) => {
           e.target.style.background = 'rgba(255, 255, 255, 0.4)';

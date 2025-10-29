@@ -508,6 +508,24 @@ code {
   scroll-behavior: smooth;
 }
 
+/* ========== NOTIFICATION FIXES ========== */
+.toast-notification-container {
+  position: fixed !important;
+  top: 80px !important; /* Tăng từ 20px để không che header */
+  right: 20px !important;
+  z-index: 99999 !important;
+  pointer-events: none !important;
+}
+
+.toast-notification {
+  pointer-events: auto !important;
+  position: relative !important;
+  will-change: transform, opacity;
+  transform: translateZ(0); /* Force hardware acceleration */
+  transition: all 0.3s ease; /* Smooth transitions */
+  margin-bottom: 8px; /* Spacing between notifications */
+}
+
 /* ========== SCROLLBAR ========== */
 .result-box::-webkit-scrollbar {
   width: 8px;
@@ -525,6 +543,27 @@ code {
 
 .result-box::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, #764ba2, #667eea);
+}
+
+/* ========== MODAL ANIMATIONS ========== */
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ========== RESPONSIVE ========== */
@@ -545,6 +584,13 @@ code {
   
   .card {
     padding: 24px;
+  }
+  
+  /* Notification responsive */
+  .toast-notification-container {
+    top: 100px !important; /* Cao hơn trên mobile */
+    right: 10px !important;
+    max-width: 280px !important;
   }
   
   .btn {

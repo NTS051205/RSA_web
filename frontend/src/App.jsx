@@ -2,28 +2,32 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import KeyGeneration from './components/KeyGeneration';
 import Encryption from './components/Encryption';
-import Signing from './components/Signing';
-import Factorization from './components/Factorization';
 import ToastNotification from './components/ToastNotification';
 import Chart from './components/Chart';
 import History from './components/History';
-import SecurityCheck from './components/SecurityCheck';
 import { ApiService } from './services/api';
+import RSAChat from './components/RSAChat';
 
 function App() {
   const [currentKey, setCurrentKey] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [apiHealth, setApiHealth] = useState(false);
-  const [activeTab, setActiveTab] = useState('operations'); // 'operations' or 'chart' or 'history'
+  const [activeTab, setActiveTab] = useState('operations'); // 'operations' (RSA cơ bản) | 'chat' (Nâng cao) | 'chart' | 'history'
   const [performanceData, setPerformanceData] = useState([]);
   const [history, setHistory] = useState([]);
 
   // Log function with toast notifications
-  const addLog = (message, type = 'info') => {
+  const addLog = (message, type = 'info', targetTab = null) => {
     const timestamp = new Date().toLocaleTimeString('vi-VN');
     
-    // Add notification
-    const newNotification = { id: Date.now(), message, type, timestamp };
+    // Add notification with target tab info
+    const newNotification = { 
+      id: Date.now(), 
+      message, 
+      type, 
+      timestamp,
+      targetTab: targetTab || activeTab // Default to current tab if not specified
+    };
     setNotifications(prev => [...prev, newNotification]);
     
     // Auto remove after 4s
@@ -37,6 +41,22 @@ function App() {
   const removeNotification = (id) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+  };
+
+  // Clear notifications when switching tabs
+  useEffect(() => {
+    console.log('Tab changed to:', activeTab, 'Clearing notifications');
+    clearAllNotifications();
+  }, [activeTab]);
+
+  // Clear all notifications on app start
+  useEffect(() => {
+    console.log('App started, clearing all notifications');
+    clearAllNotifications();
+  }, []);
 
   // Add performance data for chart
   const addPerformanceData = (operation, duration, keyId) => {
@@ -73,11 +93,28 @@ function App() {
         blockCount: entry.blockCount,
         isValid: entry.isValid,
         bitLength: entry.bitLength,
-        signatureLength: entry.signatureLength,
-        message: entry.message
+        signatureLength: entry.signatureLength
       }).catch(err => console.error('Failed to save log to MongoDB:', err));
     } catch (err) {
       console.error('Error saving log:', err);
+    }
+  };
+
+  // Clear all history (local only, keep MongoDB logs for admin)
+  const clearHistory = async () => {
+    try {
+      // Clear local state only
+      setHistory([]);
+      
+      // Clear localStorage only
+      localStorage.removeItem('rsa_history');
+      
+      // Note: MongoDB logs are kept for admin review
+      
+      addLog('Đã xóa lịch sử hiển thị thành công', 'success');
+    } catch (error) {
+      console.error('Error clearing history:', error);
+      addLog('Lỗi khi xóa lịch sử: ' + error.message, 'error');
     }
   };
 
@@ -86,7 +123,13 @@ function App() {
     const savedHistory = localStorage.getItem('rsa_history');
     if (savedHistory) {
       try {
-        setHistory(JSON.parse(savedHistory));
+        const parsed = JSON.parse(savedHistory);
+        const cleaned = Array.isArray(parsed)
+          ? parsed.filter(h => h.type !== 'sign' && h.type !== 'verify')
+          : [];
+        setHistory(cleaned);
+        // persist cleaned history
+        localStorage.setItem('rsa_history', JSON.stringify(cleaned));
       } catch (e) {
         console.error('Failed to load history:', e);
       }
@@ -112,26 +155,7 @@ function App() {
 
   return (
     <div className="App">
-      {/* Toast Notifications - Max 3 at once */}
-      <div style={{
-        position: 'fixed',
-        top: '70px',
-        right: '20px',
-        zIndex: 10000,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-        maxWidth: '320px',
-      }}>
-        {notifications.slice(0, 3).map(notification => (
-          <ToastNotification
-            key={notification.id}
-            message={notification.message}
-            type={notification.type}
-            onClose={() => removeNotification(notification.id)}
-          />
-        ))}
-      </div>
+      {/* Toast Notifications - Disabled */}
 
       <header className="app-header">
         <h1>🔐 RSA Demo - An toàn và Bảo mật Thông tin</h1>
@@ -166,7 +190,13 @@ function App() {
           className={`tab-button ${activeTab === 'operations' ? 'active' : ''}`}
           onClick={() => setActiveTab('operations')}
         >
-          ⚡ Thao tác RSA
+          📘 RSA cơ bản (Giải thuật)
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'chat' ? 'active' : ''}`}
+          onClick={() => setActiveTab('chat')}
+        >
+          🚀 Nâng cao (Hybrid Chat)
         </button>
         <button 
           className={`tab-button ${activeTab === 'chart' ? 'active' : ''}`}
@@ -188,31 +218,28 @@ function App() {
             <KeyGeneration 
               currentKey={currentKey} 
               setCurrentKey={setCurrentKey} 
-              addLog={addLog}
+              addLog={(message, type) => addLog(message, type, 'operations')}
               addPerformanceData={addPerformanceData}
               addHistory={addHistory}
             />
-            
-            <SecurityCheck currentKey={currentKey} />
             
             <Encryption 
               currentKey={currentKey} 
-              addLog={addLog}
+              addLog={(message, type) => addLog(message, type, 'operations')}
               addPerformanceData={addPerformanceData}
               addHistory={addHistory}
             />
-            
-            <Signing 
-              currentKey={currentKey} 
-              addLog={addLog}
+
+            {/* Factorization demo removed in new version */}
+          </div>
+        )}
+
+        {activeTab === 'chat' && (
+          <div className="main-content">
+            <RSAChat
+              addLog={(message, type) => addLog(message, type, 'chat')}
               addPerformanceData={addPerformanceData}
               addHistory={addHistory}
-            />
-            
-            <Factorization 
-              currentKey={currentKey} 
-              addLog={addLog}
-              addPerformanceData={addPerformanceData}
             />
           </div>
         )}
@@ -225,7 +252,7 @@ function App() {
 
         {activeTab === 'history' && (
           <div className="main-content">
-            <History history={history} />
+            <History history={history} onClearHistory={clearHistory} />
           </div>
         )}
       </div>

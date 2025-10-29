@@ -2,31 +2,43 @@ import React, { useState } from 'react';
 import { ApiService } from '../services/api';
 
 function KeyGeneration({ currentKey, setCurrentKey, addLog, addPerformanceData, addHistory }) {
-  // Values for ~100 bits key (fast for demo)
-  const [pLow, setPLow] = useState('999999999999999');
-  const [pHigh, setPHigh] = useState('9999999999999999');
+  const [bits, setBits] = useState(1024);
   const [loading, setLoading] = useState(false);
   
-  // Add helper text for larger keys
+  // Quick presets by key bit length
+  const handleSetTinyKey = () => {
+    setBits(64);
+    addLog('Đã set giá trị cho key 64 bits (rất nhanh)', 'info');
+  };
+  
+  const handleSetSmallKey = () => {
+    setBits(128);
+    addLog('Đã set giá trị cho key 128 bits (nhanh)', 'info');
+  };
+  
+  const handleSetMediumKey = () => {
+    setBits(256);
+    addLog('Đã set giá trị cho key 256 bits', 'info');
+  };
+  
   const handleSetLargeKey = () => {
-    // For ~500 bits key
-    setPLow('1000000000000000000000000000');
-    setPHigh('10000000000000000000000000000');
-    addLog('Đã set giá trị cho key ~500 bits', 'info');
+    setBits(512);
+    addLog('Đã set giá trị cho key 512 bits', 'info');
   };
   
   const handleSetVeryLargeKey = () => {
-    // For ~1000 bits key
-    setPLow('10000000000000000000000000000000000000000000');
-    setPHigh('100000000000000000000000000000000000000000000');
-    addLog('Đã set giá trị cho key ~1000 bits (sẽ mất 5-10 phút)', 'warning');
+    setBits(1024);
+    addLog('Đã set giá trị cho key 1024 bits (sẽ mất vài giây)', 'warning');
   };
   
   const handleSetExtremeKey = () => {
-    // For ~2000 bits key  
-    setPLow('1000000000000000000000000000000000000000000000000000000000000000000000000000000000');
-    setPHigh('10000000000000000000000000000000000000000000000000000000000000000000000000000000000');
-    addLog('Đã set giá trị cho key ~2000 bits (sẽ mất 30-60 phút!)', 'warning');
+    setBits(2048);
+    addLog('Đã set giá trị cho key 2048 bits (sẽ mất vài chục giây)', 'warning');
+  };
+  
+  const handleSetUltimateKey = () => {
+    setBits(4096);
+    addLog('Đã set giá trị cho key 4096 bits (sẽ mất vài phút)', 'warning');
   };
 
   const handleGenerateKey = async () => {
@@ -35,7 +47,7 @@ function KeyGeneration({ currentKey, setCurrentKey, addLog, addPerformanceData, 
     
     try {
       addLog('Đang sinh khóa RSA...', 'info');
-      const result = await ApiService.generateKey(parseInt(pLow), parseInt(pHigh));
+      const result = await ApiService.generateKey(bits);
       
       const endTime = performance.now();
       const duration = ((endTime - startTime) / 1000).toFixed(3);
@@ -43,7 +55,7 @@ function KeyGeneration({ currentKey, setCurrentKey, addLog, addPerformanceData, 
       if (result.success) {
         setCurrentKey(result);
         addLog(`Khóa đã được sinh thành công! Key ID: ${result.key_id}`, 'success');
-        addLog(`Độ dài khóa: ${result.public_key.bit_length} bits`, 'info');
+        addLog(`Độ dài khóa: ${result.bit_length}`, 'info');
         addLog(`Thời gian: ${duration}s`, 'success');
         
         // Add performance data
@@ -56,9 +68,9 @@ function KeyGeneration({ currentKey, setCurrentKey, addLog, addPerformanceData, 
           addHistory({
             type: 'generate_key',
             keyId: result.key_id,
-            bitLength: result.public_key.bit_length,
+            bitLength: result.bit_length,
             duration: parseFloat(duration),
-            n: result.public_key.n,
+            modulus: result.public_key.n,
             e: result.public_key.e,
             p: result.private_key.p,
             q: result.private_key.q
@@ -79,22 +91,14 @@ function KeyGeneration({ currentKey, setCurrentKey, addLog, addPerformanceData, 
       <h2>🔑 1. Sinh khóa RSA</h2>
       <div className="card-content">
         <div className="form-group">
-          <label>Giới hạn dưới (p_low)</label>
+          <label>Độ dài khóa (bits)</label>
           <input
-            type="text"
-            value={pLow}
-            onChange={(e) => setPLow(e.target.value)}
-            placeholder="999999999999999"
-          />
-        </div>
-        
-        <div className="form-group">
-          <label>Giới hạn trên (p_high)</label>
-          <input
-            type="text"
-            value={pHigh}
-            onChange={(e) => setPHigh(e.target.value)}
-            placeholder="9999999999999999"
+            type="number"
+            value={bits}
+            onChange={(e) => setBits(parseInt(e.target.value) || 1024)}
+            placeholder="1024"
+            min="32"
+            max="4096"
           />
         </div>
 
@@ -117,58 +121,116 @@ function KeyGeneration({ currentKey, setCurrentKey, addLog, addPerformanceData, 
           borderLeft: '4px solid #667eea'
         }}>
           <div style={{ fontWeight: 600, marginBottom: '8px', fontSize: '0.9rem' }}>
-            ⚡ Quick set cho key lớn hơn:
+            ⚡ Quick set theo độ dài khóa:
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             <button 
-              onClick={handleSetLargeKey}
+              onClick={handleSetTinyKey}
               style={{
-                padding: '6px 12px',
+                padding: '6px 10px',
                 background: '#4caf50',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
-                fontSize: '0.8rem',
+                fontSize: '0.75rem',
                 cursor: 'pointer',
                 fontWeight: 600
               }}
             >
-              🔑 ~500 bits
+              ⚡ 64 bits
             </button>
             <button 
-              onClick={handleSetVeryLargeKey}
+              onClick={handleSetSmallKey}
               style={{
-                padding: '6px 12px',
+                padding: '6px 10px',
+                background: '#8bc34a',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              🚀 128 bits
+            </button>
+            <button 
+              onClick={handleSetMediumKey}
+              style={{
+                padding: '6px 10px',
+                background: '#2196f3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              🔑 256 bits
+            </button>
+            <button 
+              onClick={handleSetLargeKey}
+              style={{
+                padding: '6px 10px',
                 background: '#ff9800',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
-                fontSize: '0.8rem',
+                fontSize: '0.75rem',
                 cursor: 'pointer',
                 fontWeight: 600
               }}
             >
-              🔑 ~1000 bits
+              🔑 512 bits
             </button>
             <button 
-              onClick={handleSetExtremeKey}
+              onClick={handleSetVeryLargeKey}
               style={{
-                padding: '6px 12px',
+                padding: '6px 10px',
                 background: '#f44336',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
-                fontSize: '0.8rem',
+                fontSize: '0.75rem',
                 cursor: 'pointer',
                 fontWeight: 600
               }}
             >
-              🔑 ~2000+ bits
+              🔑 1024 bits
+            </button>
+            <button 
+              onClick={handleSetExtremeKey}
+              style={{
+                padding: '6px 10px',
+                background: '#9c27b0',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              🔑 2048 bits
+            </button>
+            <button 
+              onClick={handleSetUltimateKey}
+              style={{
+                padding: '6px 10px',
+                background: '#e91e63',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              🔑 4096 bits
             </button>
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '8px' }}>
-            ⚠️ Cảnh báo: Key lớn hơn sẽ mất rất nhiều thời gian (10 phút - vài giờ)
-          </div>
+          {/* Warning removed as requested */}
         </div>
 
         {currentKey && (
@@ -183,15 +245,17 @@ function KeyGeneration({ currentKey, setCurrentKey, addLog, addPerformanceData, 
               <div className="key-detail">
                 <div className="key-field">
                   <span className="key-label">Modulus n:</span>
-                  <div className="key-value">{currentKey.public_key.n}</div>
+                  <div className="key-value" style={{ wordBreak: 'break-all', fontSize: '0.9rem' }}>
+                    {String(currentKey.public_key.n)}
+                  </div>
                 </div>
                 <div className="key-field">
                   <span className="key-label">Public Exponent e:</span>
-                  <div className="key-value">{currentKey.public_key.e}</div>
+                  <div className="key-value">{String(currentKey.public_key.e)}</div>
                 </div>
                 <div className="key-field">
                   <span className="key-label">Bit Length:</span>
-                  <div className="key-value">{currentKey.public_key.bit_length} bits</div>
+                  <div className="key-value">{currentKey.bit_length || 'N/A'}</div>
                 </div>
               </div>
             </div>
@@ -204,15 +268,21 @@ function KeyGeneration({ currentKey, setCurrentKey, addLog, addPerformanceData, 
               <div className="key-detail">
                 <div className="key-field">
                   <span className="key-label">Prime p:</span>
-                  <div className="key-value">{currentKey.private_key.p}</div>
+                  <div className="key-value" style={{ wordBreak: 'break-all', fontSize: '0.9rem' }}>
+                    {String(currentKey.private_key.p)}
+                  </div>
                 </div>
                 <div className="key-field">
                   <span className="key-label">Prime q:</span>
-                  <div className="key-value">{currentKey.private_key.q}</div>
+                  <div className="key-value" style={{ wordBreak: 'break-all', fontSize: '0.9rem' }}>
+                    {String(currentKey.private_key.q)}
+                  </div>
                 </div>
                 <div className="key-field">
                   <span className="key-label">Private Exponent d:</span>
-                  <div className="key-value">{currentKey.private_key.d}</div>
+                  <div className="key-value" style={{ wordBreak: 'break-all', fontSize: '0.9rem' }}>
+                    {String(currentKey.private_key.d)}
+                  </div>
                 </div>
                 <div className="key-field">
                   <span className="key-label">Key ID:</span>

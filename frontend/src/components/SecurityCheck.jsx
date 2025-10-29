@@ -10,7 +10,7 @@ function SecurityCheck({ currentKey }) {
       return;
     }
 
-    const bitLength = currentKey.public_key.bit_length;
+    const bitLength = currentKey.bit_length;
     const analysis = {
       bitLength,
       level: '',
@@ -187,7 +187,7 @@ function SecurityCheck({ currentKey }) {
             <div>
               <span style={{ color: '#718096' }}>Bit Length:</span>
               <span style={{ marginLeft: '8px', fontWeight: 700, color: securityAnalysis.levelColor }}>
-                {securityAnalysis.bitLength} bits
+                {securityAnalysis.bitLength}
               </span>
             </div>
             <div>
