@@ -10,11 +10,12 @@
 | Chức năng | Mô tả |
 |------------|--------|
 |  **Sinh khóa RSA** | Sinh cặp khóa công khai (n, e) và khóa bí mật (p, q, d) với độ dài bit tùy chọn |
-|  **Mã hóa / Giải mã** | |
+|  **Mã hóa / Giải mã** | Mã hóa và giải mã thông điệp bằng RSA |
 |  **Chat mô phỏng Alice - Bob** | Mô phỏng gửi – nhận tin nhắn được mã hóa RSA |
 |  **Biểu đồ hiệu năng** | So sánh tốc độ sinh khóa, mã hóa, giải mã |
 
 ---
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![React](https://img.shields.io/badge/React-18.2-61dafb.svg)](https://reactjs.org/)
@@ -32,52 +33,22 @@
 **📦 GitHub Repository:** [https://github.com/NTS051205/RSA_web](https://github.com/NTS051205/RSA_web)
 
 ---
-RSA_web/
-├── backend/ # Flask Backend API
-├── frontend/ # Giao diện ReactJS
-├── demo/ # Mã nguồn gốc (RSA Core)
-├── LICENSE # Giấy phép MIT
-├── README.md # Tài liệu này
-├── CONTRIBUTING.md # Quy định đóng góp
-├── Procfile # Cấu hình Heroku / Render
-├── runtime.txt # Phiên bản Python
-
----
-## Công nghệ sử dụng
-
-- **Backend:** Flask 3.0, Python 3.11, MongoDB
-- **Frontend:** ReactJS 18, Axios, Recharts, TailwindCSS
-- **Triển khai:** Render (Backend), Vercel (Frontend)
-
----
-## Cách chạy chương trình
-
-### Cách 1 – Chạy toàn bộ môi trường ảo (khuyến nghị)
-
-```bash
-# Clone dự án
-git clone https://github.com/NTS051205/RSA_web.git
-cd RSA_web
-
-# Tạo môi trường ảo
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# Cài đặt backend
-pip install -r backend/requirements.txt
-cd frontend && npm install && cd ..
-
-# Chạy backend
-cd backend
-python app.py
-
-# Chạy frontend
-cd ../frontend
-npm install
-npm start
-
 
 ## 📁 Project Structure
+
+```
+RSA_web/
+├── backend/                       # Flask Backend API
+├── frontend/                      # Giao diện ReactJS
+├── demo/                          # Mã nguồn gốc (RSA Core)
+├── LICENSE                        # Giấy phép MIT
+├── README.md                      # Tài liệu này
+├── CONTRIBUTING.md                # Quy định đóng góp
+├── Procfile                       # Cấu hình Heroku / Render
+└── runtime.txt                    # Phiên bản Python
+```
+
+### Chi tiết cấu trúc
 
 ```
 RSA_web/
@@ -134,50 +105,64 @@ RSA_web/
 └── README.md                      # This file
 ```
 
-## Deployment
+---
 
-- **Frontend**: Deployed on [Vercel](https://vercel.com) - https://rsa-web-omega.vercel.app
-- **Backend**: Deployed on [Render](https://render.com) - https://rsa-backend-2ew3.onrender.com
-- **Repository**: [GitHub](https://github.com/NTS051205/RSA_web)
+## 🛠️ Công nghệ sử dụng
+
+### Backend
+- **Python 3.11+** - Core language
+- **Flask 3.0** - Web framework
+- **Flask-CORS** - Cross-origin resource sharing
+- **PyMongo** - MongoDB integration
+- **Clean Architecture** - Modular design
+
+### Frontend
+- **React 18** - UI framework
+- **Custom Hooks** - State management
+- **Recharts** - Data visualization
+- **Axios** - HTTP client
+- **TailwindCSS** - Responsive design
+
+### Deployment
+- **Render** - Backend deployment
+- **Vercel** - Frontend deployment
 
 ---
 
-## Quick Start
+## 🚀 Cách chạy chương trình
 
-### Prerequisites
-
+### Điều kiện tiên quyết
 - Python 3.11+
 - Node.js 16+
-- npm or yarn
+- npm hoặc yarn
 
-### Option 1: Using Virtual Environment (Recommended)
+### Option 1: Sử dụng Virtual Environment (Khuyến nghị)
 
 ```bash
-# Clone repository
+# Clone dự án
 git clone https://github.com/NTS051205/RSA_web.git
 cd RSA_web
 
-# Setup virtual environment
+# Tạo môi trường ảo
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-# Install backend dependencies
+# Cài đặt dependencies backend
 pip install -r backend/requirements.txt
 
-# Install frontend dependencies
+# Cài đặt dependencies frontend
 cd frontend
 npm install
 cd ..
 
-# Run both servers
-# Terminal 1 - Backend
+# Terminal 1 - Chạy backend
 source .venv/bin/activate && cd backend && python app.py
 
-# Terminal 2 - Frontend  
+# Terminal 2 - Chạy frontend  
 cd frontend && npm start
 ```
 
-### Option 2: Direct Installation
+### Option 2: Cài đặt trực tiếp
 
 ```bash
 # Backend
@@ -185,63 +170,53 @@ cd backend
 pip install -r requirements.txt
 python app.py
 
-# Frontend (new terminal)
+# Frontend (terminal riêng)
 cd frontend
 npm install
 npm start
 ```
+
 **Backend**: http://localhost:5001  
 **Frontend**: http://localhost:3000
 
-## 📖 User Guide
+---
 
-### RSA Key Generation
-- Select key bit length (64, 128, 256, 512, 1024, 2048, 4096)
-- Click "Generate Key" to create RSA key pair
-- View key details: Key ID, bit length, public/private components
+## 📖 Hướng dẫn sử dụng
 
-### Encryption/Decryption
-- Enter message to encrypt
-- Click "Encrypt" to encrypt the message
-- Click "Decrypt" to decrypt ciphertext
-- Supports both text and packed modes
+### Sinh khóa RSA
+- Chọn độ dài khóa (64, 128, 256, 512, 1024, 2048, 4096 bits)
+- Click "Generate Key" để sinh cặp khóa RSA
+- Xem chi tiết khóa: Key ID, độ dài, các thành phần công khai/bí mật
 
-### Advanced Chat Simulation
-- Generate keys for Alice and Bob
-- Send encrypted messages between users
-- Real-time encryption/decryption process
-- Interactive chat history
+### Mã hóa/Giải mã
+- Nhập thông điệp cần mã hóa
+- Click "Encrypt" để mã hóa
+- Click "Decrypt" để giải mã
+- Hỗ trợ cả chế độ text và packed
 
-### Performance Monitoring
-- Real-time performance charts
-- Operation duration tracking
-- Key generation statistics
-- Encryption/decryption metrics
+### Chat mô phỏng Alice - Bob
+- Sinh khóa cho Alice và Bob
+- Gửi thông điệp mã hóa giữa các user
+- Theo dõi quá trình mã hóa/giải mã theo thời gian thực
+- Xem lịch sử chat tương tác
 
-## Technology Stack
+### Theo dõi Hiệu năng
+- Biểu đồ hiệu năng theo thời gian thực
+- Theo dõi thời gian thực thi
+- Thống kê sinh khóa
+- Metrics mã hóa/giải mã
 
-### Backend Architecture
-- **Python 3.11+** - Core language
-- **Flask 3.0** - Web framework
-- **Flask-CORS** - Cross-origin resource sharing
-- **PyMongo** - MongoDB integration
-- **Modular Design** - Clean code architecture
+---
 
-### Frontend Architecture
-- **React 18** - UI framework
-- **Custom Hooks** - State management
-- **Modular Components** - Component composition
-- **Recharts** - Data visualization
-- **Axios** - HTTP client
-- **Modern CSS** - Responsive design
+## 🔒 Thông báo Bảo mật
 
-## Security Notice
+> **Bản Demo Học tập**: Sử dụng khóa nhỏ (60-80 bits) để minh họa thuật toán  
+> **KHÔNG dùng cho Production**: Không an toàn cho các ứng dụng thực tế  
+> **Sử dụng thực tế**: Dùng RSA-2048/3072+ với thư viện `cryptography` tiêu chuẩn
 
-> **Academic Demo**: Small keys (60-80 bits) for algorithm demonstration  
-> **NOT for Production**: Not secure for real-world applications  
-> **Production Use**: Use RSA-2048/3072+ with standard `cryptography` library
+---
 
-## Academic Information
+## 📚 Thông tin Học tập
 
 **Học phần**: An toàn và Bảo mật Thông tin
 **Trường**: Đại học Kinh tế Quốc dân (NEU)
@@ -249,19 +224,23 @@ npm start
 **Sinh viên thực hiện**: Nguyễn Tiến Sơn (NTS)
 **Mục đích**: Xây dựng ứng dụng minh họa thuật toán mã hóa RSA phục vụ học tập và trình diễn.
 
-## 📄 License
+---
 
-MIT License - See LICENSE file for details
+## 📄 Giấy phép
+
+MIT License - Xem file LICENSE để biết chi tiết
 
 ---
 
-## 🌟 Contributing
+## 🌟 Đóng góp
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Chúng tôi rất hoan nghênh các đóng góp! Vui lòng tạo Pull Request để đóng góp.
 
-## ⭐ Support
+---
 
-If you find this project helpful, please give it a star! ⭐
+## ⭐ Hỗ trợ
+
+Nếu bạn thấy dự án này hữu ích, vui lòng cho nó một sao! ⭐
 
 ---
 
