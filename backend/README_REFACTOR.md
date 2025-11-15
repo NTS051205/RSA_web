@@ -1,9 +1,5 @@
 # RSA Demo Backend - Refactored Structure
 
-## Cấu trúc Clean Code
-
-Backend đã được refactor từ 1 file `app.py` dài 413 dòng thành các module nhỏ, dễ đọc và maintain:
-
 ### 📁 Cấu trúc thư mục
 
 ```
@@ -18,7 +14,7 @@ backend/
 └── logs/              # Log files
 ```
 
-### 🔧 Các module chính
+### Các module chính
 
 #### 1. **config.py** - Configuration Management
 - Tập trung tất cả cấu hình vào 1 chỗ
@@ -52,32 +48,10 @@ backend/
 - Register routes
 - Start server
 
-### ✅ Lợi ích của Clean Code
-
-1. **Dễ đọc**: Mỗi file có trách nhiệm rõ ràng, không quá dài
-2. **Dễ maintain**: Sửa bug chỉ cần tìm đúng module
-3. **Dễ test**: Có thể test từng module riêng biệt
-4. **Dễ mở rộng**: Thêm tính năng mới không ảnh hưởng code cũ
-5. **Separation of Concerns**: Mỗi module chỉ làm 1 việc
-
-### 🚀 Cách chạy
+### Cách chạy
 
 ```bash
 cd backend
 python3 app.py
 ```
 
-### 📝 Demo folder
-
-Folder `demo/` được giữ nguyên như yêu cầu:
-- `rsa_core.py` - RSA implementation
-- `app.py` - Streamlit demo UI
-- `README_vi.md` - Hướng dẫn demo
-
-### 🔒 Security Features
-
-- Input validation
-- Rate limiting (có thể mở rộng)
-- Error handling
-- Logging
-- MongoDB connection security

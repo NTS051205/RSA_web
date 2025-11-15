@@ -7,10 +7,10 @@ export const TABS = {
 };
 
 export const TAB_LABELS = {
-  [TABS.OPERATIONS]: '📘 RSA cơ bản (Giải thuật)',
-  [TABS.CHAT]: '🚀 Nâng cao (Hybrid Chat)',
-  [TABS.CHART]: '📊 Biểu đồ Thời gian',
-  [TABS.HISTORY]: '📜 Lịch sử'
+  [TABS.OPERATIONS]: 'RSA cơ bản (Giải thuật)',
+  [TABS.CHAT]: 'Nâng cao (Hybrid Chat)',
+  [TABS.CHART]: 'Biểu đồ Thời gian',
+  [TABS.HISTORY]: 'Lịch sử'
 };
 
 export const NOTIFICATION_TYPES = {

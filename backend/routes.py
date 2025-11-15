@@ -72,10 +72,10 @@ def register_routes(app):
         </head>
         <body>
             <div class="container">
-                <h1>🔐 RSA Demo Backend API</h1>
+                <h1>RSA Demo Backend API</h1>
                 <p>Đây là backend API server. Để sử dụng giao diện, vui lòng truy cập:</p>
                 <div class="warning">
-                    <strong>🌐 Frontend:</strong>
+                    <strong>Frontend:</strong>
                     <div style="font-size: 1.5rem; margin-top: 10px;">
                         <a href="http://localhost:3000" style="color: #fff; text-decoration: underline;">
                             http://localhost:3000

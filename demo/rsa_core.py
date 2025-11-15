@@ -81,7 +81,6 @@ def export_public(K: RSAKey):
 def export_private(K: RSAKey):
     return {"d": str(K.d), "p": str(K.p), "q": str(K.q)}
 
-# Byte mode
 def rsa_encrypt_text(text: str, K: RSAKey) -> List[int]:
     return [pow(b, K.e, K.n) for b in text.encode('utf-8')]
 
@@ -89,7 +88,6 @@ def rsa_decrypt_text(blocks: List[int], K: RSAKey) -> str:
     data = bytes(pow(c, K.d, K.n) % 256 for c in blocks)
     return data.decode('utf-8', 'ignore')
 
-# Packed mode
 def max_bytes_per_block(K: RSAKey) -> int:
     return max(1, (K.n.bit_length() - 1) // 8)
 
@@ -114,7 +112,6 @@ def rsa_decrypt_packed(blocks: List[int], sizes: List[int], K: RSAKey) -> str:
         out.extend(M.to_bytes(sz, 'big'))
     return out.decode('utf-8', 'ignore')
 
-# Base64 helper
 def int_list_to_b64(lst: List[int]) -> List[str]:
     return [base64.b64encode(i.to_bytes((i.bit_length()+7)//8 or 1,'big')).decode() for i in lst]
 
